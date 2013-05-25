@@ -23,8 +23,8 @@
  * it has been tested on an Arduino Mega 2560; it will not fit in an UNO or smaller
  */
 
-#ifndef _FSTOP_DRIVER
-#define _FSTOP_DRIVER
+#ifndef _LED_FSTOP_TIMER
+#define _LED_FSTOP_TIMER
 
 #include "Wire.h"
 #include <LiquidCrystal.h>
@@ -89,12 +89,8 @@
 #define LCD_CLK 43
 #define LCD_LATCH 39
 
-
-
 // 2 and 3 are taken by the rotary encoder - fixed assignment as they
 // require interrupts
-
-File myFile;
 
 /**
  * Instances of static interface objects
@@ -128,11 +124,11 @@ void setup()
    rotary.begin();
    fst.begin();
    
-   pinMode(53, OUTPUT);
-   if (!SD.begin(53)) {
-     Serial.println("initialization failed!");
-     return;
-   }
+   // pinMode(53, OUTPUT);
+   // if (!SD.begin(53)) {
+   //   Serial.println("initialization failed!");
+   //   return;
+   // }
 	//    myFile = SD.open("test2.txt", FILE_WRITE);
 	//    if (myFile) {
 	//      Serial.print("Writing to test.txt...");
