@@ -1,0 +1,72 @@
+Based on work Copyright (C) 2011 William Brodie-Tyrrell
+william@brodie-tyrrell.org
+
+Portions Copyright (C) 2013 Larry Gebhardt
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of   
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>
+
+--------------------------------------------------------------------------------
+Version 0.5:
+2013/05/25
+
+Initial work to adapt to driving a variable contrast set of LEDs
+Details TBD
+
+--------------------------------------------------------------------------------
+Version 0.4:
+2012/06/20
+
+Eat Your Own Dogfood edition:
+ - rotary encoder pushbutton / footswitch now supported by the software
+ - USB/serial communication implemented [1]
+ - fixed save-to-slot 7 bug
+ - entering focus mode no longer resets program
+ - backlight dimmer goes to zero for use in colour darkroom
+ - rotary encoder direction can be reversed [2]
+ - code updated to compile under Arduino-1.0
+
+Notable lacks:
+ - lamp warmup correction
+
+[1] The program to run on a host PC and connect to the timer is not yet
+in a releasable state but is coming "soon".  The timer permits the host
+to read and write any portion of the EEPROM, i.e. to transfer stored
+programs and change config settings.
+
+[2] change ROTARY_REVERSE to 1 in fstop_driver.ino and recompile
+
+--------------------------------------------------------------------------------
+Version 0.3
+2011/10/14
+
+First public release.  Features:
+ - 0.01 stop, 1ms resolution up to 1000s
+ - 6 stored programs of up to 8 steps each
+ - 14-char names for each program step
+ - SMS-style multi-press text entry
+ - test-strip generation in equi-stop increments
+ - test-strips incremental or per-tile whole exposures
+ - adjustable backlight dimmer
+ - direct decimal entry of EV
+ - EV adjustments by rotary encoder
+ - pause/restart/skip within program playback
+ - builds in Arduino-0022
+
+Limitations:
+ - dodges/burns assumed to be non-overlapping
+ - dodges must sum to less than base exposure
+
+Notable bugs:
+ - saving to slot 7 would attempt to write off the end of the EEPROM
+ - Focus mode would reset program playback
