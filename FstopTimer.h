@@ -26,6 +26,9 @@
 #include "Keypad.h"
 #include "Fstopcomms.h"
 #include "Executor.h"
+#include <SD.h>
+#include "TSL2561.h"
+#include "Paper.h"
 
 /**
  * State-machine implementing fstop timer
@@ -37,19 +40,24 @@ class FstopTimer {
   static const int MINSTOP=-800;
 
   // bounds of grade
-  static const int MAXGRADE=50;
-  static const int MINGRADE=-10;
+  static const int MAXGRADE=200;
+  static const int MINGRADE=30;
 
 public:
 
   static const char *VERSION;
   static const char VERSIONCODE=4;
+  enum Contrast_Enum {
+	HARD,
+	SOFT
+	};
 
   enum {
     ST_SPLASH,
     ST_MAIN,
     ST_EDIT,
     ST_EDIT_EV,
+    ST_EDIT_GRADE,
     ST_EDIT_TEXT,
     ST_EXEC,
     ST_FOCUS,
@@ -63,6 +71,7 @@ public:
     ST_CONFIG,
     ST_CONFIG_DRY,
     ST_CONFIG_ROTARY,
+	ST_CALIBRATE_LIGHT,
     ST_COUNT
   };
 
@@ -77,6 +86,7 @@ public:
   FstopTimer(LiquidCrystal &l, SMSKeypad &k, RotaryEncoder &r,
   ButtonDebounce &b,
   LEDDriver &led,
+  TSL2561 &t,
   char p_b, char p_bi);
 
   /// setup IO
@@ -97,13 +107,18 @@ private:
   SMSKeypad::Context smsctx;
   DecimalKeypad deckey;
   FstopComms comms;
+  TSL2561 tsl;
   DecimalKeypad::Context expctx;
+  DecimalKeypad::Context gradectx;
   DecimalKeypad::Context stepctx;
   DecimalKeypad::Context dryctx;
   DecimalKeypad::Context intctx;
 
   /// programs to execute
   Program current, strip;
+  
+  Paper currentPaper;
+  
   /// current config for test strips
   int stripbase, stripstep;
   bool stripcover;
@@ -164,6 +179,9 @@ private:
   /// change backlight intensity
   void setBacklight();
 
+  /// Calibrate the light sources sources so we can linearize them
+  void calibrateLightSource(Contrast_Enum);
+
   /// state-machine body
   void st_splash_enter();
   void st_splash_poll();
@@ -177,6 +195,8 @@ private:
   void st_edit_poll();
   void st_edit_ev_enter();
   void st_edit_ev_poll();
+  void st_edit_grade_enter();
+  void st_edit_grade_poll();
   void st_edit_text_enter();
   void st_edit_text_poll();
   void st_io_enter();
@@ -199,6 +219,8 @@ private:
   void st_config_dry_poll();
   void st_config_rotary_enter();
   void st_config_rotary_poll();
+  void st_calibrate_light_enter();
+  void st_calibrate_light_poll();
 
   // backlight bounds
   static const char BL_MIN=0;

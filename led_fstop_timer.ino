@@ -33,6 +33,7 @@
 #include "RotaryEncoder.h"
 #include "FstopTimer.h"
 #include <SD.h>
+#include "TSL2561.h"
 
 /**
  * Set this according to the vagaries of your rotary encoder
@@ -46,6 +47,7 @@
 #define EXPOSE_CENTER_SOFT 11
 #define EXPOSE_CORNER_HARD 10
 #define EXPOSE_CORNER_SOFT 9
+#define SAFELIGHT_RELAY 5
 
 
 #define EXPOSEBTN 7   // low=depressed (internal pullup); not currently in use
@@ -77,12 +79,12 @@
 #define SCANROW3 28    // bottom row *0#D
 
 // pins for HD44780 in 4-bit mode; RW grounded.
-#define LCDD7 7
-#define LCDD6 6
-#define LCDD5 5
-#define LCDD4 4
-#define LCDEN 9
-#define LCDRS 8
+// #define LCDD7 7
+// #define LCDD6 6
+// #define LCDD5 5
+// #define LCDD4 4
+// #define LCDEN 9
+// #define LCDRS 8
 
 // LCD PINS Using SPI
 #define LCD_DATA 41
@@ -101,9 +103,11 @@ LiquidCrystal disp(LCD_DATA, LCD_CLK, LCD_LATCH); //SPI
 SMSKeypad keys(SCANCOL0, SCANCOL1, SCANCOL2, SCANCOL3, SCANROW0, SCANROW1, SCANROW2, SCANROW3);
 ButtonDebounce expbtn(EXPOSEBTN);
 RotaryEncoder rotary(ROTARY_REVERSE);
-LEDDriver leddriver(EXPOSE_CENTER_HARD, EXPOSE_CENTER_SOFT, EXPOSE_CORNER_HARD, EXPOSE_CORNER_SOFT);
+LEDDriver leddriver(EXPOSE_CENTER_HARD, EXPOSE_CENTER_SOFT, EXPOSE_CORNER_HARD, EXPOSE_CORNER_SOFT, SAFELIGHT_RELAY);
 // all the guts are in this object
-FstopTimer fst(disp, keys, rotary, expbtn, leddriver, BEEP, BACKLIGHT);
+TSL2561 tsl(TSL2561_ADDR_FLOAT); 
+
+FstopTimer fst(disp, keys, rotary, expbtn, leddriver, tsl, BEEP, BACKLIGHT);
 
 /**
  * Arduino boot/init function
@@ -111,12 +115,12 @@ FstopTimer fst(disp, keys, rotary, expbtn, leddriver, BEEP, BACKLIGHT);
 void setup()
 {
    // init raw IO for LCD
-   pinMode(LCDRS, OUTPUT);
-   pinMode(LCDEN, OUTPUT);
-   pinMode(LCDD4, OUTPUT);
-   pinMode(LCDD5, OUTPUT);
-   pinMode(LCDD6, OUTPUT);
-   pinMode(LCDD7, OUTPUT);
+   // pinMode(LCDRS, OUTPUT);
+   // pinMode(LCDEN, OUTPUT);
+   // pinMode(LCDD4, OUTPUT);
+   // pinMode(LCDD5, OUTPUT);
+   // pinMode(LCDD6, OUTPUT);
+   // pinMode(LCDD7, OUTPUT);
    
    disp.begin(20, 4);
    leddriver.begin();
@@ -124,24 +128,19 @@ void setup()
    rotary.begin();
    fst.begin();
    
-   // pinMode(53, OUTPUT);
-   // if (!SD.begin(53)) {
-   //   Serial.println("initialization failed!");
-   //   return;
-   // }
-	//    myFile = SD.open("test2.txt", FILE_WRITE);
-	//    if (myFile) {
-	//      Serial.print("Writing to test.txt...");
-	//      myFile.println("testing 4, 5, 6.");
-	// // close the file:
-	//      myFile.close();
-	//      Serial.println("done.");
-	//    } else {
-	//       // if the file didn't open, print an error:
-	//      Serial.println("error opening test.txt");
-	//    }
-
+   tsl.setGain(TSL2561_GAIN_16X);
+   tsl.setTiming(TSL2561_INTEGRATIONTIME_402MS);
    
+   Serial.begin(9600);
+     
+   pinMode(53, OUTPUT);
+   disp.setCursor(0, 3);
+   if (!SD.begin(53)) {
+     disp.print("SD init failed!");
+   }
+   else {
+     disp.print("SDCard initialized!");
+   }
 }
 
 /**

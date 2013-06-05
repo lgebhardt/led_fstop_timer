@@ -22,6 +22,8 @@
 #include <Arduino.h>
 #include <LiquidCrystal.h>
 #include <EEPROM.h>
+#include "Paper.h"
+#include "LEDDriver.h"
 
 /**
  * Definition of a program of exposures
@@ -52,7 +54,7 @@ public:
       void displayGrade(LiquidCrystal &disp, char *buf, bool lin);
 
       int stops;               // fixed-point, 1/100ths of a stop
-      int grade;               // grade, 1/10ths of agrade
+      unsigned char grade;               // grade, 1/10ths of a grade
       char text[TEXTLEN+1];    // description (only 14 bytes written to EEPROM)
   };
 
@@ -82,7 +84,7 @@ public:
   // unsigned char getCount();
 
   /// convert a program from stops to linear time so that it can be execed
-  bool compile(char dd, bool sg);
+  bool compile(char dd, bool sg, Paper& p);
 
   /// save to EEPROM
   /// @param slot slot-number in 1..7
@@ -99,9 +101,9 @@ public:
 private:
 
   int slotAddr(int slot);
-  void compileStripIndiv(char dd);
-  void compileStripCover(char dd);
-  bool compileNormal(char dd, bool sg);
+  void compileStripIndiv(char dd, Paper& p);
+  void compileStripCover(char dd, Paper& p);
+  bool compileNormal(char dd, bool sg, Paper& p);
   void clipExposures();
 
   /// convert hundredths-of-stops to milliseconds

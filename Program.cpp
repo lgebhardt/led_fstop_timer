@@ -22,14 +22,14 @@ void Program::clear()
 {
     // base
     steps[0].stops=300;
-    steps[0].grade=20;
+    steps[0].grade=100;
     strcpy(steps[0].text, "Base Exposure");
     isstrip=false;
    
     // invalid
     for(int i=1;i<MAXSTEPS;++i){
         steps[i].stops=0;
-        steps[i].grade=20;
+        steps[i].grade=100;
         strcpy(steps[i].text, "Undefined");
     }
 
@@ -69,43 +69,47 @@ void Program::clipExposures()
     }
 }
 
-bool Program::compile(char dryval, bool splitgrade)
+bool Program::compile(char dryval, bool splitgrade, Paper& p)
 {
 	clearExposures();
 	
     if(isstrip){
         if(cover)
-            compileStripCover(dryval);
+            compileStripCover(dryval, p);
         else
-            compileStripIndiv(dryval);
+            compileStripIndiv(dryval, p);
 
         clipExposures();
         return true;
     }
     else{
-        return compileNormal(dryval, splitgrade);
+        return compileNormal(dryval, splitgrade, p);
     }
 }
 
-void Program::compileStripIndiv(char dryval)
+void Program::compileStripIndiv(char dryval, Paper& p)
 {
     for(int i=0;i<MAXSTEPS;++i){
         exposures[i].ms=hunToMillis(steps[i].stops-dryval);
+	    exposures[i].softpower=p.getAmountSoft(steps[i].grade);
+	    exposures[i].hardpower=p.getAmountHard(steps[i].grade);
     }
 }
 
-void Program::compileStripCover(char dryval)
+void Program::compileStripCover(char dryval, Paper& p)
 {
     unsigned long sofar=0;
 
     for(int i=0;i<MAXSTEPS;++i){
         unsigned long thisexp=hunToMillis(steps[i].stops-dryval);
         exposures[i].ms=thisexp-sofar;
+	    exposures[i].softpower=p.getAmountSoft(steps[i].grade);
+	    exposures[i].hardpower=p.getAmountHard(steps[i].grade);
         sofar+=exposures[i].ms;
     }
 }
 
-bool Program::compileNormal(char dryval, bool splitgrade)
+bool Program::compileNormal(char dryval, bool splitgrade, Paper& p)
 {
 	Serial.println("compileNormal");
 
@@ -116,8 +120,8 @@ bool Program::compileNormal(char dryval, bool splitgrade)
 	Serial.println(steps[0].text);
       
     exposures[0].ms=hunToMillis(base);
-    exposures[0].softpower=50;
-    exposures[0].hardpower=50;
+    exposures[0].softpower=p.getAmountSoft(steps[0].grade);
+    exposures[0].hardpower=p.getAmountHard(steps[0].grade);
 	exposures[0].step = &steps[0];
 
 	if (splitgrade){
@@ -127,17 +131,17 @@ bool Program::compileNormal(char dryval, bool splitgrade)
 	    exposures[0].ms=hunToMillis(base);
 	    exposures[1].ms=hunToMillis(base);
 
-	    exposures[0].softpower=50;
-	    exposures[0].hardpower=0;
-	    exposures[1].softpower=0;
-	    exposures[1].hardpower=50;
+	    exposures[0].softpower=p.getAmountSoft(steps[0].grade);
+	    exposures[0].hardpower=LEDDriver::LED_OFF;
+	    exposures[1].softpower=LEDDriver::LED_OFF;
+	    exposures[1].hardpower=p.getAmountHard(steps[0].grade);
 	}else{
 		exposures[0].step = &steps[0];
 
 	    exposures[0].ms=hunToMillis(base);
 
-	    exposures[0].softpower=50;
-	    exposures[0].hardpower=50;
+	    exposures[0].softpower=p.getAmountSoft(steps[0].grade);
+	    exposures[0].hardpower=p.getAmountHard(steps[0].grade);
 	}
     
     // figure out the total exposure desired for each step (base+adjustment)
@@ -148,12 +152,12 @@ bool Program::compileNormal(char dryval, bool splitgrade)
 		
         if(steps[i].stops == 0){
             exposures[j].ms=0;
-		    exposures[j].hardpower=0;
-		    exposures[j].softpower=0;
+		    exposures[j].hardpower=LEDDriver::LED_OFF;
+		    exposures[j].softpower=LEDDriver::LED_OFF;
 			if (splitgrade){
 	            exposures[j+1].ms=0;
-			    exposures[j+1].hardpower=0;
-			    exposures[j+1].softpower=0;
+			    exposures[j+1].hardpower=LEDDriver::LED_OFF;
+			    exposures[j+1].softpower=LEDDriver::LED_OFF;
 			}
             continue;
         }
@@ -165,17 +169,17 @@ bool Program::compileNormal(char dryval, bool splitgrade)
 		    exposures[j].ms=hunToMillis(base+steps[i].stops);
 		    exposures[j+1].ms=hunToMillis(base+steps[i].stops);
 
-		    exposures[j].softpower=50;
-		    exposures[j].hardpower=0;
-		    exposures[j+1].softpower=0;
-		    exposures[j+1].hardpower=50;
+		    exposures[j].softpower=p.getAmountSoft(steps[i].grade);
+		    exposures[j].hardpower=LEDDriver::LED_OFF;
+		    exposures[j+1].softpower=LEDDriver::LED_OFF;
+		    exposures[j+1].hardpower=p.getAmountHard(steps[i].grade);
 		}else{
 			exposures[j].step = &steps[i];
 
 		    exposures[j].ms=hunToMillis(base+steps[i].stops);
 
-		    exposures[j].softpower=50;
-		    exposures[j].hardpower=50;
+		    exposures[j].softpower=p.getAmountSoft(steps[i].grade);
+		    exposures[j].hardpower=p.getAmountHard(steps[i].grade);
 		}
 
         // is dodge?
@@ -262,11 +266,7 @@ void Program::Step::displayGrade(LiquidCrystal &disp, char *buf, bool lin)
 
     // print grade
     char used=0;
-    if(grade >= 0){
-        disp.print("+");
-        ++used;
-    }
-    dtostrf(0.1f*grade, 0, 1, buf);
+    itoa(grade, buf, 10);
     used+=strlen(buf);
     disp.print(buf);
 }
@@ -320,11 +320,8 @@ void Program::Exposure::displayGrade(LiquidCrystal &disp, char *buf, bool lin)
 
     // print grade
     char used=0;
-    if(step->grade >= 0){
-        disp.print("+");
-        ++used;
-    }
-    dtostrf(0.1f*step->grade, 0, 1, buf);
+
+    itoa(step->grade, buf, 10);
     used+=strlen(buf);
     disp.print(buf);
 

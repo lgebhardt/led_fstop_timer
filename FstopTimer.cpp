@@ -26,6 +26,7 @@ FstopTimer::voidfunc FstopTimer::sm_enter[]
       &FstopTimer::st_main_enter,
       &FstopTimer::st_edit_enter, 
       &FstopTimer::st_edit_ev_enter, 
+      &FstopTimer::st_edit_grade_enter, 
       &FstopTimer::st_edit_text_enter, 
       &FstopTimer::st_exec_enter,
       &FstopTimer::st_focus_enter,
@@ -38,7 +39,8 @@ FstopTimer::voidfunc FstopTimer::sm_enter[]
       &FstopTimer::st_test_changes_enter, 
       &FstopTimer::st_config_enter,
       &FstopTimer::st_config_dry_enter,
-      &FstopTimer::st_config_rotary_enter
+      &FstopTimer::st_config_rotary_enter,
+      &FstopTimer::st_calibrate_light_enter
  };
 /// functions to exec when polling within each state
 FstopTimer::voidfunc FstopTimer::sm_poll[]
@@ -46,6 +48,7 @@ FstopTimer::voidfunc FstopTimer::sm_poll[]
       &FstopTimer::st_main_poll, 
       &FstopTimer::st_edit_poll,
       &FstopTimer::st_edit_ev_poll,
+      &FstopTimer::st_edit_grade_poll,
       &FstopTimer::st_edit_text_poll,
       &FstopTimer::st_exec_poll, 
       &FstopTimer::st_focus_poll, 
@@ -58,24 +61,27 @@ FstopTimer::voidfunc FstopTimer::sm_poll[]
       &FstopTimer::st_test_changes_poll,
       &FstopTimer::st_config_poll,
       &FstopTimer::st_config_dry_poll,
-      &FstopTimer::st_config_rotary_poll
+      &FstopTimer::st_config_rotary_poll,
+      &FstopTimer::st_calibrate_light_poll
 };
 
 FstopTimer::FstopTimer(LiquidCrystal &l, SMSKeypad &k, RotaryEncoder &r,
                        ButtonDebounce &b,
-                       LEDDriver &led, char p_b, char p_bl)
-    : disp(l), keys(k), rotary(r), button(b), leddriver(led),
+                       LEDDriver &led, 
+                       TSL2561 &t, char p_b, char p_bl)
+    : disp(l), keys(k), rotary(r), button(b), leddriver(led), tsl(t),
       smsctx(&inbuf[0], 14, &disp, 0, 0),
       deckey(keys), comms(l),
       expctx(&inbuf[0], 1, 2, &disp, 0, 2, true),
+      gradectx(&inbuf[0], 3, 0, &disp, 7, 1, false),
       stepctx(&inbuf[0], 1, 2, &disp, 0, 1, false),
       dryctx(&inbuf[0], 0, 2, &disp, 0, 1, false),
       intctx(&inbuf[0], 1, 0, &disp, 0, 1, false),
       exec(l, keys, button, led),
+      
        
       pin_beep(p_b), pin_backlight(p_bl)
 {
-
     // init libraries
     prevstate=curstate=ST_MAIN;
     focusphase=-1;
@@ -219,7 +225,7 @@ void FstopTimer::st_main_poll()
 
 void FstopTimer::execCurrent()
 {
-    if(!current.compile(drydown_apply ? drydown : 0, splitgrade)){
+    if(!current.compile(drydown_apply ? drydown : 0, splitgrade, currentPaper)){
         disp.print("Cannot Print");
         disp.setCursor(0, 1);
         disp.print("Dodges > Base");
@@ -245,7 +251,7 @@ void FstopTimer::st_exec_enter()
 {
     Program *p=exec.getProgram();
     // we assume it compiles if we're in this state
-    p->compile(drydown_apply ? drydown : 0, splitgrade);
+    p->compile(drydown_apply ? drydown : 0, splitgrade, currentPaper);
     disp.clear();
     exec.setDrydown(drydown_apply);
     exec.setSplitgrade(splitgrade);
@@ -379,8 +385,10 @@ void FstopTimer::st_edit_poll()
             changeState(ST_EDIT_EV);
             break;
         case 'C':
-        case 'D':
             changeState(ST_MAIN);
+            break;
+        case 'D':
+            changeState(ST_EDIT_GRADE);
             break;
         case '#':
         case '*':
@@ -422,6 +430,26 @@ void FstopTimer::st_edit_ev_poll()
     if(deckey.poll()){
         if(expctx.exitcode != Keypad::KP_C){
             current.getStep(expnum).stops=expctx.result;
+        }
+        current.getStep(expnum).display(disp, dispbuf, false);
+        // sly state change without expnum=0
+        curstate=ST_EDIT;
+    }
+}
+
+void FstopTimer::st_edit_grade_enter()
+{
+    deckey.setContext(&gradectx);
+}
+
+void FstopTimer::st_edit_grade_poll()
+{
+    if(deckey.poll()){
+        if(expctx.exitcode != Keypad::KP_C){
+            // current.getStep(expnum).grade=constrain(gradectx.result, MINGRADE, MAXGRADE);
+            // Round to units of 5. Always rounds down, but that's ok.
+            unsigned char temp = (gradectx.result / 5)*5;
+            current.getStep(expnum).grade=constrain(temp, MINGRADE, MAXGRADE);
         }
         current.getStep(expnum).display(disp, dispbuf, false);
         // sly state change without expnum=0
@@ -648,7 +676,9 @@ void FstopTimer::st_config_enter()
     disp.setCursor(0,0);
     disp.print("Config  A:Rotary");
     disp.setCursor(0,1);
-    disp.print("B:Brite D:Drydn");  
+    disp.print("B:Brite D:Drydn"); 
+    disp.setCursor(0,2);
+    disp.print("0:Cal Light");
 }
 
 void FstopTimer::st_config_poll()
@@ -671,10 +701,91 @@ void FstopTimer::st_config_poll()
             // change drydown
             changeState(ST_CONFIG_DRY);
             break;
+        case '0':
+            changeState(ST_CALIBRATE_LIGHT);
+            break;
         default:
             // main menu
             changeState(ST_MAIN);
         }
+    }
+}
+void FstopTimer::st_calibrate_light_enter()
+{
+    disp.clear();
+    disp.setCursor(0,0);
+    disp.print("#:Start");
+}
+
+void FstopTimer::st_calibrate_light_poll()
+{
+    if(keys.available()){
+        char ch=keys.readAscii();
+        switch(ch){
+            case '#':
+                calibrateLightSource(SOFT);
+                calibrateLightSource(HARD);
+                delay(1000);
+                changeState(ST_CALIBRATE_LIGHT);
+                break;
+            default:
+                // main menu
+                changeState(ST_MAIN);
+        }
+    }
+}
+
+void FstopTimer::calibrateLightSource(Contrast_Enum source)
+{
+    char output_buffer[20];
+    File dataFile;
+    SD.mkdir("/cal/");
+    if (source == SOFT) {
+        if (SD.exists("/cal/soft.txt")) {
+            SD.remove("/cal/soft.txt");
+        }
+        dataFile = SD.open("/cal/soft.txt", FILE_WRITE);
+    } else {
+        if (SD.exists("/cal/hard.txt")) {
+            SD.remove("/cal/hard.txt");
+        }
+        dataFile = SD.open("/cal/hard.txt", FILE_WRITE);
+    }
+
+    if (dataFile) {
+        disp.setCursor(0, 0);
+        if (source == SOFT){
+            disp.print("Reading Soft Light");
+        } else {
+            disp.print("Reading Hard Light");
+        }
+        dataFile.println("i, ir_spectrum, full_spectrum");
+        for (int i = 0; i <= 255 ; i++){
+            disp.setCursor(0, 2);
+            if (source == SOFT){
+                leddriver.calibrateOn(255, i, 255, i);      
+            } else {
+                leddriver.calibrateOn(i, 255, i, 255);      
+            }
+
+            delay(500);
+            uint32_t full_luminosity = tsl.getFullLuminosity();
+            uint16_t ir_spectrum = full_luminosity >> 16;
+            uint16_t full_spectrum = full_luminosity & 0xFFFF;    
+            snprintf_P(output_buffer, 20, PSTR("%3d %6d %6d"), i, ir_spectrum, full_spectrum);
+            disp.print(output_buffer);
+    
+            dataFile.print(i);
+            dataFile.print(",");
+            dataFile.print(ir_spectrum);
+            dataFile.print(",");
+            dataFile.println(full_spectrum);
+        }
+        leddriver.allOff();
+        dataFile.close();
+    } else {
+        disp.setCursor(0, 0);
+        disp.print("Error opening file");
     }
 }
 
