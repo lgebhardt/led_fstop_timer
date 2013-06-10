@@ -30,7 +30,7 @@
  */
 class Program {
   static const int INVALID=0x0000;
-  static const int SLOTBITS=7;
+  static const int SLOTBITS=7; // Allocates 128 bytes per slot
   static const int SLOTBASE=0x80;
   static const int TEXTLEN=14;
   static const long MAXMS=999999L;    // ceiling of 1000s
@@ -54,7 +54,7 @@ public:
       void displayGrade(LiquidCrystal &disp, char *buf, bool lin);
 
       int stops;               // fixed-point, 1/100ths of a stop
-      unsigned char grade;               // grade, 1/10ths of a grade
+      unsigned char grade;     // grade, ISO Exposure Scale
       char text[TEXTLEN+1];    // description (only 14 bytes written to EEPROM)
   };
 
@@ -67,8 +67,8 @@ public:
 	  void displayTime(LiquidCrystal &disp, char *buf, bool lin);
 	  void displayGrade(LiquidCrystal &disp, char *buf, bool lin);
 	  unsigned long ms;        // milliseconds to expose (post-compilation, not saved)
-	  unsigned char hardpower; //percentage power for hard step
-	  unsigned char softpower; //percentage power for soft step
+	  unsigned char hardpower; //power for hard step, 0 is full, 255 is off
+	  unsigned char softpower; //power for soft step, 0 is full, 255 is off
 	  Step* step; 
   };
 

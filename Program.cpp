@@ -361,6 +361,7 @@ void Program::save(int slot)
     for(int i=0;i<MAXSTEPS;++i){
         EEPROM.write(addr++, (steps[i].stops >> 8) & 0xFF);
         EEPROM.write(addr++, steps[i].stops & 0xFF);
+        EEPROM.write(addr++, steps[i].grade & 0xFF);
         for(int t=0;t<TEXTLEN;++t){
             EEPROM.write(addr++, steps[i].text[t]); 
         }
@@ -378,6 +379,7 @@ bool Program::load(int slot)
         tmp=EEPROM.read(addr++) << 8;
         tmp|=EEPROM.read(addr++);
         steps[i].stops=tmp;
+        steps[i].grade=EEPROM.read(addr++);
         for(int t=0;t<TEXTLEN;++t){
             steps[i].text[t]=EEPROM.read(addr++); 
         }
