@@ -27,7 +27,7 @@
 
 class Executor {
 public:
-  Executor(LiquidCrystal &d, Keypad &k, ButtonDebounce &b, LEDDriver &led);
+  Executor(LiquidCrystal &d, Keypad &k, ButtonDebounce &b, ButtonDebounce &fs, LEDDriver &led);
 
   void begin();
 
@@ -68,6 +68,7 @@ private:
   LiquidCrystal &disp;
   Keypad &keys;
   ButtonDebounce &button;
+  ButtonDebounce &footswitch;
   LEDDriver &leddriver;
   char dispbuf[21];
 

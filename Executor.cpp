@@ -18,8 +18,8 @@
 
 #include "Executor.h"
 
-Executor::Executor(LiquidCrystal &l, Keypad &k, ButtonDebounce &b, LEDDriver &led)
-    : disp(l), keys(k), button(b), leddriver(led)
+Executor::Executor(LiquidCrystal &l, Keypad &k, ButtonDebounce &b, ButtonDebounce &fs, LEDDriver &led)
+    : disp(l), keys(k), button(b), footswitch(fs), leddriver(led)
 {
     current=NULL;
 }
@@ -99,29 +99,47 @@ void Executor::expose()
 
             // pause!
             keys.scan();
-            if(keys.available()){
-                if(keys.readRaw() == Keypad::KP_HASH){
+            button.scan();
+            footswitch.scan();
+            
+            bool buttonPressed = button.hadPress() || footswitch.hadPress();
+            if(keys.available() || buttonPressed){
+                if (keys.readRaw() == Keypad::KP_HASH || buttonPressed){
                     leddriver.allOff();
                     unsigned long pausestart=micros();
 
-                    // cancel on anuthing but Expose button
-                    char ch=keys.readBlocking();
-                    switch(ch){
-                    case Keypad::KP_HASH:
-                        // adjust clock and resume exposing
-                        // !! should account for enlarger warmup here
+                    // cancel on anything but Expose buttons
+                    buttonPressed = false;
+                    do {
+                        keys.scan();
+                        button.scan();
+                        footswitch.scan();
+                        buttonPressed = button.hadPress() || footswitch.hadPress();
+                    } while(!keys.available() && !buttonPressed);
+
+                    if (buttonPressed){
                         start+=micros()-pausestart;
 					    leddriver.exposeOn(expo.hardpower, expo.softpower, expo.hardpower, expo.softpower);
-                        break;
-                    case Keypad::KP_B:
-                        // halt and this exposure
-                        skipped=true;
-                        break;
-                    default:
-                        // halt and cancel
-                        skipped=true;
-                        cancelled=true;
+                    } else {
+                        char ch = keys.readRaw();                    
+                        switch(ch){
+                            case Keypad::KP_HASH:
+                            // adjust clock and resume exposing
+                            // !! should account for enlarger warmup here
+                            start+=micros()-pausestart;
+					        leddriver.exposeOn(expo.hardpower, expo.softpower, expo.hardpower, expo.softpower);
+                            break;
+                            case Keypad::KP_B:
+                            // halt and this exposure
+                            skipped=true;
+                            break;
+                            default:
+                            // halt and cancel
+                            skipped=true;
+                            cancelled=true;
+                        }
                     }
+                    
                 }
             }
         }

@@ -85,6 +85,7 @@ public:
   /// @param p_bl backlight pin, connect via BC548
   FstopTimer(LiquidCrystal &l, SMSKeypad &k, RotaryEncoder &r,
   ButtonDebounce &b,
+  ButtonDebounce &fs,
   LEDDriver &led,
   TSL2561 &t,
   char p_b, char p_bi);
@@ -104,6 +105,7 @@ private:
   SMSKeypad &keys;
   RotaryEncoder &rotary;
   ButtonDebounce &button;
+  ButtonDebounce &footswitch;
   SMSKeypad::Context smsctx;
   DecimalKeypad deckey;
   FstopComms comms;
@@ -141,7 +143,7 @@ private:
   char focusphase;
 
   /// hardware pin numbers
-  char pin_exposebtn, pin_beep, pin_backlight;
+  char pin_exposebtn, pin_footswitch, pin_beep, pin_backlight;
 
   LEDDriver leddriver;
 

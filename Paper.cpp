@@ -35,49 +35,39 @@ void Paper::load(char fileName) {
 }
 
 void Paper::initDefault() {
-    // //ToDo: Fix this logic up. This is only for testing
-    // for (unsigned char i = 0 ; i < GRADES ; i++) {
-    //     amountsHard[i] = (200.0 / GRADES) * (GRADES - i);
-    //     amountsSoft[i] = (193.0 / GRADES) * (i + 7);
-    // }
-    // // Overrides to turn off lamps fully at extremes
-    // amountsSoft[0] = 7;
-    // amountsSoft[GRADES - 1] = 255;
-
-
     //Rough curve from first round of testing
-    amountsSoft[0] = 255;
-    amountsSoft[1] = 255;
-    amountsSoft[2] = 255;
-    amountsSoft[3] = 255;
-    amountsSoft[4] = 255;
+    amountsSoft[0] = 255; //30
+    amountsSoft[1] = 255; //35
+    amountsSoft[2] = 255; //40
+    amountsSoft[3] = 255; //45
+    amountsSoft[4] = 255; //50
     amountsSoft[5] = 210; //55
     amountsSoft[6] = 184; //60
-    amountsSoft[7] = 158;
-    amountsSoft[8] = 141;
-    amountsSoft[9] = 127;
-    amountsSoft[10] = 118;
-    amountsSoft[11] = 111;
-    amountsSoft[12] = 105;
-    amountsSoft[13] = 100;
-    amountsSoft[14] = 95;
-    amountsSoft[15] = 90;
-    amountsSoft[16] = 85;
-    amountsSoft[17] = 80;
-    amountsSoft[18] = 75;
-    amountsSoft[19] = 71;
-    amountsSoft[20] = 66;
-    amountsSoft[21] = 58;
-    amountsSoft[22] = 51;
-    amountsSoft[23] = 45;
-    amountsSoft[24] = 39;
-    amountsSoft[25] = 34;
-    amountsSoft[26] = 28;
-    amountsSoft[27] = 22;
-    amountsSoft[28] = 16;
-    amountsSoft[29] = 10; //175
-    amountsSoft[30] = 9;  //180
-    amountsSoft[31] = 8;  //Cheats to test high power green
+    amountsSoft[7] = 158; //65
+    amountsSoft[8] = 141; //70
+    amountsSoft[9] = 127; //75
+    amountsSoft[10] = 118; //80
+    amountsSoft[11] = 111; //85
+    amountsSoft[12] = 105; //90
+    amountsSoft[13] = 100; //95
+    amountsSoft[14] = 95;  //100
+    amountsSoft[15] = 90;  //105
+    amountsSoft[16] = 85;  //110
+    amountsSoft[17] = 80;  //115
+    amountsSoft[18] = 75;  //120
+    amountsSoft[19] = 71;  //125
+    amountsSoft[20] = 66;  //130
+    amountsSoft[21] = 58;  //135
+    amountsSoft[22] = 51;  //140
+    amountsSoft[23] = 45;  //145
+    amountsSoft[24] = 39;  //150
+    amountsSoft[25] = 34;  //155
+    amountsSoft[26] = 28;  //160
+    amountsSoft[27] = 22;  //165
+    amountsSoft[28] = 16;  //170
+    amountsSoft[29] = 10;  //175
+    amountsSoft[30] = 9;   //180
+    amountsSoft[31] = 8;   //Cheats to test high power green
     amountsSoft[32] = 7;
     amountsSoft[33] = 6;
     amountsSoft[34] = 5;

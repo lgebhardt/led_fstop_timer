@@ -67,9 +67,10 @@ FstopTimer::voidfunc FstopTimer::sm_poll[]
 
 FstopTimer::FstopTimer(LiquidCrystal &l, SMSKeypad &k, RotaryEncoder &r,
                        ButtonDebounce &b,
+                       ButtonDebounce &fs,
                        LEDDriver &led, 
                        TSL2561 &t, char p_b, char p_bl)
-    : disp(l), keys(k), rotary(r), button(b), leddriver(led), tsl(t),
+    : disp(l), keys(k), rotary(r), button(b), footswitch(fs), leddriver(led), tsl(t),
       smsctx(&inbuf[0], 14, &disp, 0, 0),
       deckey(keys), comms(l),
       expctx(&inbuf[0], 1, 2, &disp, 0, 2, true),
@@ -77,7 +78,7 @@ FstopTimer::FstopTimer(LiquidCrystal &l, SMSKeypad &k, RotaryEncoder &r,
       stepctx(&inbuf[0], 1, 2, &disp, 0, 1, false),
       dryctx(&inbuf[0], 0, 2, &disp, 0, 1, false),
       intctx(&inbuf[0], 1, 0, &disp, 0, 1, false),
-      exec(l, keys, button, led),
+      exec(l, keys, button, footswitch, led),
       
        
       pin_beep(p_b), pin_backlight(p_bl)
@@ -165,7 +166,7 @@ void FstopTimer::st_splash_poll()
         keys.readAscii();
         changeState(ST_MAIN);
     }
-    if(button.hadPress()){
+    if(button.hadPress() || footswitch.hadPress()){
         changeState(ST_MAIN);
     }    
 }
@@ -186,6 +187,10 @@ void FstopTimer::st_main_enter()
 void FstopTimer::st_main_poll()
 {   
     if(button.hadPress()){
+        changeState(ST_FOCUS);
+        return;
+    }
+    if(footswitch.hadPress()){
         changeState(ST_FOCUS);
         return;
     }
@@ -264,7 +269,7 @@ void FstopTimer::st_exec_enter()
 
 void FstopTimer::st_exec_poll()
 {
-    if(button.hadPress()){
+    if(button.hadPress() || footswitch.hadPress()){
         exec.expose();
         return;
     }   
@@ -337,7 +342,11 @@ void FstopTimer::st_focus_enter()
 
 void FstopTimer::st_focus_poll()
 {
-    bool done=button.hadPress();
+    bool done=false;
+    
+    if (button.hadPress() || footswitch.hadPress()){
+        done=true;
+    }
 
     // return to prev state?
     if(keys.available()){
@@ -370,6 +379,12 @@ void FstopTimer::st_edit_enter()
 
 void FstopTimer::st_edit_poll()
 {
+    if(button.hadPress() || footswitch.hadPress()){
+        exec.setProgram(&current);
+        changeState(ST_EXEC);
+        return;
+    }   
+
     // keypad events?
     if(keys.available()){
         char ch=keys.readAscii();
@@ -588,7 +603,11 @@ void FstopTimer::st_test_enter()
 
 void FstopTimer::st_test_poll()
 {
-    bool go=button.hadPress();
+    bool go=false;
+    
+    if (button.hadPress() || footswitch.hadPress()){
+        go = true;
+    }
 
     if(keys.available()){
         char ch=keys.readAscii();
@@ -853,6 +872,7 @@ void FstopTimer::changeState(int st)
     prevstate=curstate;
     curstate=st;
     button.hadPress();  // clear any press that might interfere in next state
+    footswitch.hadPress();
     (this->*sm_enter[curstate])();
 }
 
@@ -862,6 +882,7 @@ void FstopTimer::poll()
     // scan keypad
     keys.scan();
     button.scan();
+    footswitch.scan();
   
     // attend to whatever the state requires
     (this->*sm_poll[curstate])(); 

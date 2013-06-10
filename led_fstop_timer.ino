@@ -38,7 +38,7 @@
 /**
  * Set this according to the vagaries of your rotary encoder
  */
-#define ROTARY_REVERSE 0
+#define ROTARY_REVERSE 1
 
 /**
  * IO pin assignments; change to suit your PCB
@@ -47,10 +47,11 @@
 #define EXPOSE_CENTER_SOFT 11
 #define EXPOSE_CORNER_HARD 10
 #define EXPOSE_CORNER_SOFT 9
-#define SAFELIGHT_RELAY 5
+#define SAFELIGHT_RELAY 8
 
 
-#define EXPOSEBTN 7   // low=depressed (internal pullup); not currently in use
+#define EXPOSEBTN 14  // low=depressed (internal pullup); not currently in use
+#define FOOTSWITCH 15 // low=depressed (internal pullup); not currently in use
 #define BEEP 6        // requires PWM
 #define BACKLIGHT 8   // requires PWM; high=on
 
@@ -66,17 +67,15 @@
 // for physical keypad pinout, consider LHS (viewed from front) as pin 1
 // 1-4 = rows starting at top
 // 5-8 = columns starting at left
+#define SCANCOL0 38    // left column 147*
+#define SCANCOL1 24
+#define SCANCOL2 26
+#define SCANCOL3 30     // right column ABCD
 
-// output pins shared with LCD via resistors
-#define SCANCOL0 23    // left column 147*
-#define SCANCOL1 25
-#define SCANCOL2 27
-#define SCANCOL3 29     // right column ABCD
-
-#define SCANROW0 22    // top row 123A
-#define SCANROW1 24
-#define SCANROW2 26
-#define SCANROW3 28    // bottom row *0#D
+#define SCANROW0 28    // top row 123A
+#define SCANROW1 32
+#define SCANROW2 34
+#define SCANROW3 36    // bottom row *0#D
 
 // pins for HD44780 in 4-bit mode; RW grounded.
 // #define LCDD7 7
@@ -87,9 +86,9 @@
 // #define LCDRS 8
 
 // LCD PINS Using SPI
-#define LCD_DATA 41
-#define LCD_CLK 43
-#define LCD_LATCH 39
+#define LCD_DATA 42
+#define LCD_CLK 40
+#define LCD_LATCH 44
 
 // 2 and 3 are taken by the rotary encoder - fixed assignment as they
 // require interrupts
@@ -102,12 +101,13 @@ LiquidCrystal disp(LCD_DATA, LCD_CLK, LCD_LATCH); //SPI
 
 SMSKeypad keys(SCANCOL0, SCANCOL1, SCANCOL2, SCANCOL3, SCANROW0, SCANROW1, SCANROW2, SCANROW3);
 ButtonDebounce expbtn(EXPOSEBTN);
+ButtonDebounce footswitch(FOOTSWITCH);
 RotaryEncoder rotary(ROTARY_REVERSE);
 LEDDriver leddriver(EXPOSE_CENTER_HARD, EXPOSE_CENTER_SOFT, EXPOSE_CORNER_HARD, EXPOSE_CORNER_SOFT, SAFELIGHT_RELAY);
 // all the guts are in this object
 TSL2561 tsl(TSL2561_ADDR_FLOAT); 
 
-FstopTimer fst(disp, keys, rotary, expbtn, leddriver, tsl, BEEP, BACKLIGHT);
+FstopTimer fst(disp, keys, rotary, expbtn, footswitch, leddriver, tsl, BEEP, BACKLIGHT);
 
 /**
  * Arduino boot/init function
