@@ -30,6 +30,7 @@
 #define EE_VERSION 0x09
 #define EE_SPLITGRADE 0x0A
 #define EE_CONFIGTOP 0x0B
+#define EE_STRIPGRADE 0x0C
 #define EE_TOP 0x400
 
 #endif

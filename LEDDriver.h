@@ -24,7 +24,7 @@ public:
     static const unsigned char LED_SOFT_MIN=200;
     static const unsigned char LED_OFF=255;
 
-    void focusOn();
+    void focusOn(unsigned char center_hard, unsigned char center_soft, unsigned char corner_hard, unsigned char corner_soft);
     void exposeOn(unsigned char center_hard, unsigned char center_soft, unsigned char corner_hard, unsigned char corner_soft);
     void calibrateOn(unsigned char center_hard, unsigned char center_soft, unsigned char corner_hard, unsigned char corner_soft);
     void allOff();

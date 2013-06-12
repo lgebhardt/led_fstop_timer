@@ -67,6 +67,7 @@ public:
     ST_COMMS,
     ST_TEST,
     ST_TEST_CHANGEB,
+    ST_TEST_CHANGEGRADE,
     ST_TEST_CHANGES,
     ST_CONFIG,
     ST_CONFIG_DRY,
@@ -124,6 +125,7 @@ private:
   /// current config for test strips
   int stripbase, stripstep;
   bool stripcover;
+  unsigned char stripgrade;
 
   Executor exec;
 
@@ -213,6 +215,8 @@ private:
   void st_test_poll();
   void st_test_changeb_enter();
   void st_test_changeb_poll();
+  void st_test_changegrade_enter();
+  void st_test_changegrade_poll();
   void st_test_changes_enter();
   void st_test_changes_poll();
   void st_config_enter();

@@ -16,10 +16,11 @@ void LEDDriver::begin() {
     allOff();
 }
 
-void LEDDriver::focusOn() {
-    analogWrite(pin_expose_center_soft, LED_SOFT_MAX);
-    analogWrite(pin_expose_corner_soft, LED_SOFT_MAX);
-    digitalWrite(pin_safelight_relay, HIGH);
+void LEDDriver::focusOn(unsigned char center_hard, unsigned char center_soft, unsigned char corner_hard, unsigned char corner_soft) {
+    // analogWrite(pin_expose_center_soft, LED_SOFT_MAX);
+    // analogWrite(pin_expose_corner_soft, LED_SOFT_MAX);
+    // digitalWrite(pin_safelight_relay, HIGH);
+    exposeOn(center_hard, center_soft, corner_hard, corner_soft);
 }
 
 void LEDDriver::exposeOn(unsigned char center_hard, unsigned char center_soft, unsigned char corner_hard, unsigned char corner_soft) {

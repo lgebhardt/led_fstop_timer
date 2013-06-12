@@ -32,7 +32,7 @@ class Program {
   static const int INVALID=0x0000;
   static const int SLOTBITS=7; // Allocates 128 bytes per slot
   static const int SLOTBASE=0x80;
-  static const int TEXTLEN=14;
+  static const int TEXTLEN=18;
   static const long MAXMS=999999L;    // ceiling of 1000s
 
 public:
@@ -55,7 +55,7 @@ public:
 
       int stops;               // fixed-point, 1/100ths of a stop
       unsigned char grade;     // grade, ISO Exposure Scale
-      char text[TEXTLEN+1];    // description (only 14 bytes written to EEPROM)
+      char text[TEXTLEN+1];    // description (only TEXTLEN(18) bytes written to EEPROM)
   };
 
   class Exposure {
@@ -96,7 +96,7 @@ public:
 
   /// configure the program as a test strip;
   /// is assumed to compile after this.
-  void configureStrip(int base, int step, bool cover);
+  void configureStrip(int base, int step, bool cover, unsigned char grade, Paper& p);
 
 private:
 
@@ -112,6 +112,7 @@ private:
   // compilation settings
   bool isstrip, cover;
 
+public:
   /// first step is base, rest as dodges/burns
   Step steps[MAXSTEPS];
   Exposure exposures[MAXEXPOSURES];

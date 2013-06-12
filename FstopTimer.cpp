@@ -36,6 +36,7 @@ FstopTimer::voidfunc FstopTimer::sm_enter[]
       &FstopTimer::st_comms_enter,
       &FstopTimer::st_test_enter, 
       &FstopTimer::st_test_changeb_enter, 
+      &FstopTimer::st_test_changegrade_enter, 
       &FstopTimer::st_test_changes_enter, 
       &FstopTimer::st_config_enter,
       &FstopTimer::st_config_dry_enter,
@@ -58,6 +59,7 @@ FstopTimer::voidfunc FstopTimer::sm_poll[]
       &FstopTimer::st_comms_poll,
       &FstopTimer::st_test_poll,
       &FstopTimer::st_test_changeb_poll,
+      &FstopTimer::st_test_changegrade_poll,
       &FstopTimer::st_test_changes_poll,
       &FstopTimer::st_config_poll,
       &FstopTimer::st_config_dry_poll,
@@ -71,7 +73,7 @@ FstopTimer::FstopTimer(LiquidCrystal &l, SMSKeypad &k, RotaryEncoder &r,
                        LEDDriver &led, 
                        TSL2561 &t, char p_b, char p_bl)
     : disp(l), keys(k), rotary(r), button(b), footswitch(fs), leddriver(led), tsl(t),
-      smsctx(&inbuf[0], 14, &disp, 0, 0),
+      smsctx(&inbuf[0], 18, &disp, 0, 0),
       deckey(keys), comms(l),
       expctx(&inbuf[0], 1, 2, &disp, 0, 2, true),
       gradectx(&inbuf[0], 3, 0, &disp, 7, 1, false),
@@ -120,6 +122,7 @@ void FstopTimer::begin()
     stripbase=(EEPROM.read(EE_STRIPBASE)<<8) | EEPROM.read(EE_STRIPBASE+1);
     stripstep=(EEPROM.read(EE_STRIPSTEP)<<8) | EEPROM.read(EE_STRIPSTEP+1);
     stripcover=EEPROM.read(EE_STRIPCOV);
+    stripgrade=EEPROM.read(EE_STRIPGRADE);
 
     // prevent client-overwrite shenanigans
     EEPROM.write(EE_VERSION, VERSIONCODE);
@@ -247,7 +250,7 @@ void FstopTimer::execCurrent()
 
 void FstopTimer::execTest()
 {
-    strip.configureStrip(stripbase, stripstep, stripcover);
+    strip.configureStrip(stripbase, stripstep, stripcover, stripgrade, currentPaper);
     exec.setProgram(&strip);
     changeState(ST_EXEC);
 }
@@ -337,7 +340,10 @@ void FstopTimer::st_focus_enter()
 {
     disp.clear();
     disp.print("       Focus!");    
-    leddriver.focusOn();
+    leddriver.focusOn(currentPaper.getAmountHard(current.steps[0].grade),
+                      currentPaper.getAmountSoft(current.steps[0].grade),
+                      currentPaper.getAmountHard(current.steps[0].grade),
+                      currentPaper.getAmountSoft(current.steps[0].grade));
 }
 
 void FstopTimer::st_focus_poll()
@@ -591,12 +597,24 @@ void FstopTimer::st_test_enter()
     disp.print(stripcover ? "Cover" : "Indiv");
     disp.print(" B:Change");
     disp.setCursor(0, 1);
+    disp.print("*: Change Grade");
+
+    disp.setCursor(0, 2);
+    disp.print("Grade:");
+    // print grade
+    char used=0;
+    char buf[21];
+    itoa(stripgrade, buf, 10);
+    used+=strlen(buf);
+    disp.print(buf);
+ 
+    disp.setCursor(0, 3);
     dtostrf(0.01f*stripbase, 0, 2, dispbuf);
     disp.print(dispbuf);
     disp.print(" by ");
     dtostrf(0.01f*stripstep, 0, 2, dispbuf);
     disp.print(dispbuf);
-    disp.setCursor(19, 2);
+    disp.setCursor(19, 3);
     disp.print(drydown_apply ? "D" : " ");
     rotary.getDelta();
 }
@@ -631,6 +649,10 @@ void FstopTimer::st_test_poll()
             toggleDrydown();
             changeState(ST_TEST);
             break;
+        case '*':
+            // change exposures
+            changeState(ST_TEST_CHANGEGRADE);
+            break;
         case '#':
             // perform exposure
             go=true;
@@ -645,7 +667,7 @@ void FstopTimer::st_test_poll()
     }
 
     if(go){
-        strip.configureStrip(stripbase, stripstep, stripcover);
+        strip.configureStrip(stripbase, stripstep, stripcover, stripgrade, currentPaper);
         exec.setProgram(&strip);
         changeState(ST_EXEC);
     }
@@ -667,6 +689,25 @@ void FstopTimer::st_test_changeb_poll()
             EEPROM.write(EE_STRIPBASE+1, stripbase & 0xFF);
         }
         changeState(ST_TEST_CHANGES);
+    }
+}
+
+void FstopTimer::st_test_changegrade_enter()
+{
+    disp.clear();
+    disp.print("Grade:");
+    deckey.setContext(&gradectx);
+}
+
+void FstopTimer::st_test_changegrade_poll()
+{
+    if(deckey.poll()){
+        if(gradectx.exitcode != Keypad::KP_C){
+             unsigned char temp = (gradectx.result / 5)*5;
+            stripgrade=constrain(temp, MINGRADE, MAXGRADE);
+            EEPROM.write(EE_STRIPGRADE, stripgrade);
+        }
+        changeState(ST_TEST);
     }
 }
 

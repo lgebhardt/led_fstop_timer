@@ -44,7 +44,7 @@ void Program::clearExposures()
     }
 }
 
-void Program::configureStrip(int base, int step, bool cov)
+void Program::configureStrip(int base, int step, bool cov, unsigned char grade, Paper& p)
 {
     isstrip=true;
     cover=cov;
@@ -52,10 +52,10 @@ void Program::configureStrip(int base, int step, bool cov)
     int expos=base;
     for(char i=0;i<MAXSTEPS;++i) {
         steps[i].stops=expos;
+        steps[i].grade=grade;
         strcpy(steps[i].text, "Strip ");
         dtostrf(0.01f*expos, 1, 2, &steps[i].text[6]);
         strcpy(&steps[i].text[10], cov ? " Cov" : " Ind");
-
         expos+=step;
     }
 }
@@ -93,6 +93,7 @@ void Program::compileStripIndiv(char dryval, Paper& p)
         exposures[i].ms=hunToMillis(steps[i].stops-dryval);
 	    exposures[i].softpower=p.getAmountSoft(steps[i].grade);
 	    exposures[i].hardpower=p.getAmountHard(steps[i].grade);
+    	exposures[i].step = &steps[i];
     }
 }
 
@@ -105,19 +106,20 @@ void Program::compileStripCover(char dryval, Paper& p)
         exposures[i].ms=thisexp-sofar;
 	    exposures[i].softpower=p.getAmountSoft(steps[i].grade);
 	    exposures[i].hardpower=p.getAmountHard(steps[i].grade);
+    	exposures[i].step = &steps[i];
         sofar+=exposures[i].ms;
     }
 }
 
 bool Program::compileNormal(char dryval, bool splitgrade, Paper& p)
 {
-	Serial.println("compileNormal");
+    // Serial.println("compileNormal");
 
     // base exposure, perhaps with drydown
     int base=steps[0].stops-dryval;
 
-	Serial.print("steps[0].text:");
-	Serial.println(steps[0].text);
+    // Serial.print("steps[0].text:");
+    // Serial.println(steps[0].text);
       
     exposures[0].ms=hunToMillis(base);
     exposures[0].softpower=p.getAmountSoft(steps[0].grade);
