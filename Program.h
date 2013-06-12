@@ -112,7 +112,6 @@ private:
   // compilation settings
   bool isstrip, cover;
 
-public:
   /// first step is base, rest as dodges/burns
   Step steps[MAXSTEPS];
   Exposure exposures[MAXEXPOSURES];

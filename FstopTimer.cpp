@@ -340,10 +340,10 @@ void FstopTimer::st_focus_enter()
 {
     disp.clear();
     disp.print("       Focus!");    
-    leddriver.focusOn(currentPaper.getAmountHard(current.steps[0].grade),
-                      currentPaper.getAmountSoft(current.steps[0].grade),
-                      currentPaper.getAmountHard(current.steps[0].grade),
-                      currentPaper.getAmountSoft(current.steps[0].grade));
+    leddriver.focusOn(currentPaper.getAmountHard(stripgrade),
+                      currentPaper.getAmountSoft(stripgrade),
+                      currentPaper.getAmountHard(stripgrade),
+                      currentPaper.getAmountSoft(stripgrade));
 }
 
 void FstopTimer::st_focus_poll()
