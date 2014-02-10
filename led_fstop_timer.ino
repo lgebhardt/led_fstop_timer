@@ -55,6 +55,8 @@
 #define BEEP 6        // requires PWM
 #define BACKLIGHT 8   // requires PWM; high=on
 
+#define SD_CARD 53
+
 // keypad is 4x4: 3x3 numeric upper left with *0# below that and A-D down the right
 /*
 // separate pins
@@ -107,7 +109,7 @@ LEDDriver leddriver(EXPOSE_CENTER_HARD, EXPOSE_CENTER_SOFT, EXPOSE_CORNER_HARD, 
 // all the guts are in this object
 TSL2561 tsl(TSL2561_ADDR_FLOAT); 
 
-FstopTimer fst(disp, keys, rotary, expbtn, footswitch, leddriver, tsl, BEEP, BACKLIGHT);
+FstopTimer fst(disp, keys, rotary, expbtn, footswitch, leddriver, tsl, BEEP, BACKLIGHT, SD_CARD);
 
 /**
  * Arduino boot/init function
@@ -122,6 +124,8 @@ void setup()
    // pinMode(LCDD6, OUTPUT);
    // pinMode(LCDD7, OUTPUT);
    
+   Serial.begin(9600);
+
    disp.begin(20, 4);
    leddriver.begin();
    keys.begin();
@@ -130,17 +134,6 @@ void setup()
    
    tsl.setGain(TSL2561_GAIN_16X);
    tsl.setTiming(TSL2561_INTEGRATIONTIME_402MS);
-   
-   Serial.begin(9600);
-     
-   pinMode(53, OUTPUT);
-   disp.setCursor(0, 3);
-   if (!SD.begin(53)) {
-     disp.print("SD init failed!");
-   }
-   else {
-     disp.print("SDCard initialized!");
-   }
 }
 
 /**

@@ -41,7 +41,10 @@ FstopTimer::voidfunc FstopTimer::sm_enter[]
       &FstopTimer::st_config_enter,
       &FstopTimer::st_config_dry_enter,
       &FstopTimer::st_config_rotary_enter,
-      &FstopTimer::st_calibrate_light_enter
+      &FstopTimer::st_calibrate_light_enter,
+      &FstopTimer::st_paper_enter,
+      &FstopTimer::st_paper_display_enter,
+      &FstopTimer::st_paper_load_enter
  };
 /// functions to exec when polling within each state
 FstopTimer::voidfunc FstopTimer::sm_poll[]
@@ -64,14 +67,17 @@ FstopTimer::voidfunc FstopTimer::sm_poll[]
       &FstopTimer::st_config_poll,
       &FstopTimer::st_config_dry_poll,
       &FstopTimer::st_config_rotary_poll,
-      &FstopTimer::st_calibrate_light_poll
+      &FstopTimer::st_calibrate_light_poll,
+      &FstopTimer::st_paper_poll,
+      &FstopTimer::st_paper_display_poll,
+      &FstopTimer::st_paper_load_poll
 };
 
 FstopTimer::FstopTimer(LiquidCrystal &l, SMSKeypad &k, RotaryEncoder &r,
                        ButtonDebounce &b,
                        ButtonDebounce &fs,
                        LEDDriver &led, 
-                       TSL2561 &t, char p_b, char p_bl)
+                       TSL2561 &t, char p_b, char p_bl, char p_sd)
     : disp(l), keys(k), rotary(r), button(b), footswitch(fs), leddriver(led), tsl(t),
       smsctx(&inbuf[0], 18, &disp, 0, 0),
       deckey(keys), comms(l),
@@ -80,10 +86,9 @@ FstopTimer::FstopTimer(LiquidCrystal &l, SMSKeypad &k, RotaryEncoder &r,
       stepctx(&inbuf[0], 1, 2, &disp, 0, 1, false),
       dryctx(&inbuf[0], 0, 2, &disp, 0, 1, false),
       intctx(&inbuf[0], 1, 0, &disp, 0, 1, false),
+      paperctx(&inbuf[0], 1, 0, &disp, 0, 1, false),
       exec(l, keys, button, footswitch, led),
-      
-       
-      pin_beep(p_b), pin_backlight(p_bl)
+      pin_beep(p_b), pin_backlight(p_bl), pin_sd(p_sd) 
 {
     // init libraries
     prevstate=curstate=ST_MAIN;
@@ -106,9 +111,12 @@ void FstopTimer::begin()
     pinMode(pin_beep, OUTPUT);
     pinMode(pin_backlight, OUTPUT);
     pinMode(pin_exposebtn, INPUT);
+    pinMode(pin_sd, OUTPUT);
 
     leddriver.allOff();
 
+    sdready = SD.begin(pin_sd);
+    
     // load & apply backlight settings
     setBacklight();
    
@@ -131,6 +139,9 @@ void FstopTimer::begin()
 
     comms.begin();
     exec.begin();
+    
+    //Load the default / first paper
+    currentPaper.init(sdready);
 
     // boot the state machine
     changeState(ST_SPLASH);
@@ -158,6 +169,11 @@ void FstopTimer::st_splash_enter()
     disp.print("W Brodie-Tyrrell");
     disp.setCursor(0, 2);
     disp.print("Larry Gebhardt");
+    disp.setCursor(0, 3);
+    if (sdready)
+        disp.print("SD Card Ready");
+    else
+        disp.print("SD Card Not Ready!");
 }
 
 void FstopTimer::st_splash_poll()
@@ -183,6 +199,8 @@ void FstopTimer::st_main_enter()
     disp.setCursor(0,1);
     disp.print("C:Config D:Test");
     disp.setCursor(0,2);
+    disp.print("7:Paper");
+    disp.setCursor(0,3);
     disp.print("*:Focus  #:Expose");
 }
 
@@ -214,6 +232,9 @@ void FstopTimer::st_main_poll()
             break;
         case 'D':
             changeState(ST_TEST);
+            break;
+        case '7':
+            changeState(ST_PAPER);
             break;
         case '#':
             exec.setProgram(&current);
@@ -470,7 +491,7 @@ void FstopTimer::st_edit_grade_poll()
             // current.getStep(expnum).grade=constrain(gradectx.result, MINGRADE, MAXGRADE);
             // Round to units of 5. Always rounds down, but that's ok.
             unsigned char temp = (gradectx.result / 5)*5;
-            current.getStep(expnum).grade=constrain(temp, MINGRADE, MAXGRADE);
+            current.getStep(expnum).grade=constrain(temp, currentPaper.minGrade, currentPaper.maxGrade);
         }
         current.getStep(expnum).display(disp, dispbuf, false);
         // sly state change without expnum=0
@@ -575,6 +596,90 @@ void FstopTimer::st_io_save_poll()
         delay(1000);
 
         changeState(ST_MAIN);
+    }
+}
+
+void FstopTimer::st_paper_enter()
+{
+    disp.clear();
+    disp.print("A: Display B: Load");
+    disp.setCursor(0, 1);
+    disp.print("C: Main");
+}
+
+void FstopTimer::st_paper_poll()
+{
+    if(keys.available()){
+        char ch=keys.readAscii();
+        switch(ch){
+        case 'A':
+            current.clear();
+            changeState(ST_PAPER_DISPLAY);
+            break;
+        case 'B':
+            changeState(ST_PAPER_LOAD);
+            break;
+        case 'C':
+            changeState(ST_MAIN);
+            break;
+        default:
+            errorBeep();
+        }
+    }
+}
+
+void FstopTimer::st_paper_display_enter()
+{
+    disp.clear();
+    disp.print("Paper:");
+    disp.setCursor(0, 1);
+    disp.print(currentPaper.getName());
+    disp.setCursor(0, 2);
+    String line;
+    line = "Grades: ";
+    line += currentPaper.minGrade;
+    line += "-";
+    line += currentPaper.maxGrade;
+    disp.print(line);
+}
+
+void FstopTimer::st_paper_display_poll()
+{
+    if(keys.available()){
+        char ch=keys.readAscii();
+        switch(ch){
+        case 'C':
+            changeState(ST_PAPER);
+            break;
+        default:
+            errorBeep();
+        }
+    }
+}
+
+void FstopTimer::st_paper_load_enter()
+{
+    disp.clear();
+    disp.print("Select Load Paper");
+    deckey.setContext(&paperctx);
+}
+
+void FstopTimer::st_paper_load_poll()
+{
+    if(deckey.poll()){
+        disp.clear();
+        char paper=paperctx.result;
+
+        if(currentPaper.load(paper)){ 
+            disp.print("Paper Loaded");
+        }
+        else{
+            disp.print("Paper not in 0..9");
+            errorBeep();
+        }
+        delay(1000);
+
+        changeState(ST_PAPER_DISPLAY);
     }
 }
 

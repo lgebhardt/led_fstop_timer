@@ -29,20 +29,35 @@ public:
 
 private:
     // bounds of grade, 30 to 200 in steps of 5
-    static const int MAXGRADE=200;
-    static const int MINGRADE=30;
-    static const int GRADES=35; 
+    static const int MAXGRADE = 200;
+    static const int MINGRADE = 30;
+    static const int FIRSTPAPER = 0;
+    static const int LASTPAPER = 9;
 
-    char name[21];
+    static const int GRADES = ((MAXGRADE - MINGRADE) / 5) + 1; 
+
+    String name;
     unsigned char amountsSoft[GRADES];
     unsigned char amountsHard[GRADES];
+    bool sdready;
+
+    bool initFromFile(File& dataFile);
+    unsigned char parseLevel(String brightness);
+    String readLine(File& dataFile);
+    void initDefault();
 
 public:
-    void load(char fileName);
-    void initDefault();
+    void init(bool sdready);
+    bool load(char paper);	
+
+    unsigned char minGrade; 
+    unsigned char maxGrade;
+    unsigned char maxBrightnessSoft;
+    unsigned char maxBrightnessHard;
+
     unsigned char getAmountSoft(unsigned char grade);
     unsigned char getAmountHard(unsigned char grade);
-    char* getName();
+    String& getName();
 };
 
 #endif
