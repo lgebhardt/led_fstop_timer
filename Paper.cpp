@@ -19,7 +19,94 @@
 #include "Paper.h"
 
 Paper::Paper() {
-    initDefault();
+    sdready = false;
+}
+
+void Paper::init(bool ready)
+{
+    sdready = ready;
+    if (sdready) {
+        load(0);
+    }
+    else {
+        initDefault();
+    }
+}
+
+bool Paper::load(char paper) {
+    if (!sdready) {
+        initDefault();
+        return false;
+    }
+
+    if(paper < FIRSTPAPER || paper > LASTPAPER)
+        return false;
+
+    String fileName = "/papers/";
+    fileName += (int) paper;
+    fileName += ".ppr";
+
+    char buf[30];
+    fileName.toCharArray(buf, 30);
+
+    File f = SD.open(buf, FILE_READ);
+        if (f) {
+        initFromFile(f);
+        f.close();
+        return true;
+    }
+    else {
+        initDefault();
+    }
+    return false;
+}
+
+bool Paper::initFromFile(File& dataFile) {
+    //Line 1: name
+    if (dataFile.available()) {
+        name = readLine(dataFile);
+    }
+    String line;
+    //Line 2: Max/focus brightness
+    line = readLine(dataFile);
+    int delim = line.indexOf(',');
+    maxBrightnessSoft = parseLevel(line.substring(0, delim));
+    maxBrightnessHard = parseLevel(line.substring(delim + 1));
+    
+    //Line 3: Min Grade
+    minGrade = parseLevel(readLine(dataFile));
+    //Line 4: Max Grade
+    maxGrade = parseLevel(readLine(dataFile));
+
+    //Line 5+: Brightness pairs
+    for (int pos = 0; pos < GRADES; pos++) {
+        line = readLine(dataFile);
+
+        int delim = line.indexOf(',');
+        amountsSoft[pos] = parseLevel(line.substring(0, delim));
+        amountsHard[pos] = parseLevel(line.substring(delim + 1));
+    }
+    
+    return true;
+}
+
+unsigned char Paper::parseLevel(String level) {
+    level.trim();
+    return level.toInt();
+}
+
+String Paper::readLine(File& dataFile) {
+    String ln = "";
+    while (dataFile.available()) {
+        char character = dataFile.read();
+        if (character == '\n') {
+            return ln;
+        }
+        else {
+            ln = ln + character;
+        }
+    }
+    return ln;
 }
 
 unsigned char Paper::getAmountSoft(unsigned char grade) {
@@ -30,9 +117,7 @@ unsigned char Paper::getAmountHard(unsigned char grade){
     return amountsHard[(constrain(grade, MINGRADE, MAXGRADE) - MINGRADE) / 5];
 }
 
-void Paper::load(char fileName) {
-    
-}
+String& Paper::getName() { return name; }
 
 void Paper::initDefault() {
     //Rough curve from first round of testing
@@ -81,6 +166,10 @@ void Paper::initDefault() {
         amountsHard[i] = 217 - amountsSoft[i];
     }
     
-    strcpy(name, "Default Paper");
+    name = "System Default Paper";
+    maxBrightnessSoft = 217;
+    maxBrightnessHard = 217;
+    minGrade = 55;
+    maxGrade = 180;
 }
 

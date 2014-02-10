@@ -46,11 +46,11 @@ class FstopTimer {
 public:
 
   static const char *VERSION;
-  static const char VERSIONCODE=4;
+  static const char VERSIONCODE=5;
   enum Contrast_Enum {
-	HARD,
-	SOFT
-	};
+    HARD,
+    SOFT
+  };
 
   enum {
     ST_SPLASH,
@@ -72,7 +72,10 @@ public:
     ST_CONFIG,
     ST_CONFIG_DRY,
     ST_CONFIG_ROTARY,
-	ST_CALIBRATE_LIGHT,
+    ST_CALIBRATE_LIGHT,
+    ST_PAPER,
+	ST_PAPER_DISPLAY,
+    ST_PAPER_LOAD,
     ST_COUNT
   };
 
@@ -89,7 +92,7 @@ public:
   ButtonDebounce &fs,
   LEDDriver &led,
   TSL2561 &t,
-  char p_b, char p_bi);
+  char p_b, char p_bi, char p_sd);
 
   /// setup IO
   void begin();
@@ -116,6 +119,7 @@ private:
   DecimalKeypad::Context stepctx;
   DecimalKeypad::Context dryctx;
   DecimalKeypad::Context intctx;
+  DecimalKeypad::Context paperctx;
 
   /// programs to execute
   Program current, strip;
@@ -145,8 +149,10 @@ private:
   char focusphase;
 
   /// hardware pin numbers
-  char pin_exposebtn, pin_footswitch, pin_beep, pin_backlight;
+  char pin_exposebtn, pin_footswitch, pin_beep, pin_backlight, pin_sd;
 
+  bool sdready;
+  
   LEDDriver leddriver;
 
   /// all state-machine functions have this signature
@@ -227,6 +233,12 @@ private:
   void st_config_rotary_poll();
   void st_calibrate_light_enter();
   void st_calibrate_light_poll();
+  void st_paper_enter();
+  void st_paper_poll();
+  void st_paper_display_enter();
+  void st_paper_display_poll();
+  void st_paper_load_enter();
+  void st_paper_load_poll();
 
   // backlight bounds
   static const char BL_MIN=0;
