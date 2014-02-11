@@ -39,10 +39,6 @@ public:
   /// @param d whether to indicate that drydown is applied
   void setDrydown(bool d);
 
-  /// set splitgrade indication
-  /// @param s whether to indicate that splitgrade is applied
-  void setSplitgrade(bool s);
-
   Program *getProgram() const { 
     return current; 
   }

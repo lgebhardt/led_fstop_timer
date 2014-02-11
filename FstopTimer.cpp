@@ -124,19 +124,18 @@ void FstopTimer::begin()
 //    drydown_apply=EEPROM.read(EE_DRYAPPLY);
     drydown_apply = false;
     
-    splitgrade = EEPROM.read(EE_SPLITGRADE);
-    
     current.clear();
     stripbase=(EEPROM.read(EE_STRIPBASE)<<8) | EEPROM.read(EE_STRIPBASE+1);
     stripstep=(EEPROM.read(EE_STRIPSTEP)<<8) | EEPROM.read(EE_STRIPSTEP+1);
     stripcover=EEPROM.read(EE_STRIPCOV);
-    stripgrade=EEPROM.read(EE_STRIPGRADE);
 
     // prevent client-overwrite shenanigans
     EEPROM.write(EE_VERSION, VERSIONCODE);
 
     rotexp=EEPROM.read(EE_ROTARY);
 
+    focusBright = true;
+    
     comms.begin();
     exec.begin();
     
@@ -151,12 +150,6 @@ void FstopTimer::toggleDrydown()
 {
     drydown_apply=!drydown_apply;
 //    EEPROM.write(EE_DRYAPPLY, drydown_apply);
-}
-
-void FstopTimer::toggleSplitgrade()
-{
-    splitgrade=!splitgrade;
-    EEPROM.write(EE_SPLITGRADE, splitgrade);
 }
 
 void FstopTimer::st_splash_enter()
@@ -254,7 +247,7 @@ void FstopTimer::st_main_poll()
 
 void FstopTimer::execCurrent()
 {
-    if(!current.compile(drydown_apply ? drydown : 0, splitgrade, currentPaper)){
+    if(!current.compile(drydown_apply ? drydown : 0, currentPaper)){
         disp.print("Cannot Print");
         disp.setCursor(0, 1);
         disp.print("Dodges > Base");
@@ -280,10 +273,9 @@ void FstopTimer::st_exec_enter()
 {
     Program *p=exec.getProgram();
     // we assume it compiles if we're in this state
-    p->compile(drydown_apply ? drydown : 0, splitgrade, currentPaper);
+    p->compile(drydown_apply ? drydown : 0, currentPaper);
     disp.clear();
     exec.setDrydown(drydown_apply);
-    exec.setSplitgrade(splitgrade);
 
     if(focusphase >= 0){
         exec.changePhase(focusphase);
@@ -327,19 +319,6 @@ void FstopTimer::st_exec_poll()
             // main menu
             changeState(ST_MAIN);
             break;
-        case '7':
-            // toggle splitgrade
-            toggleSplitgrade();
-            if(exec.getPhase() != 0){
-                disp.clear();
-                disp.print("Restart Exposure");
-                disp.setCursor(0,1);
-                disp.print("For Splitgrade Chg");
-                delay(1000);
-            }
-            // forces recompile -> apply splitgrade
-            changeState(ST_EXEC);
-            break;
         case 'D':
             // toggle drydown & recompile
             toggleDrydown();
@@ -360,11 +339,25 @@ void FstopTimer::st_exec_poll()
 void FstopTimer::st_focus_enter()
 {
     disp.clear();
-    disp.print("       Focus!");    
-    leddriver.focusOn(currentPaper.getAmountHard(stripgrade),
-                      currentPaper.getAmountSoft(stripgrade),
-                      currentPaper.getAmountHard(stripgrade),
-                      currentPaper.getAmountSoft(stripgrade));
+    if (focusBright) {
+        disp.print("Bright Focus!");    
+        leddriver.focusOn(currentPaper.maxBrightnessHard,
+                          currentPaper.maxBrightnessSoft,
+                          currentPaper.maxBrightnessHard,
+                          currentPaper.maxBrightnessSoft);
+    }
+    else  {
+        disp.print("Step 1 Focus!");
+        unsigned char grade = current.getStep(0).grade;    
+        leddriver.focusOn(currentPaper.getAmountHard(grade),
+                          currentPaper.getAmountSoft(grade),
+                          currentPaper.getAmountHard(grade),
+                          currentPaper.getAmountSoft(grade));
+    }
+    disp.setCursor(0, 1);
+    disp.print("0: Toggle brightness");    
+    disp.setCursor(0, 2);
+    disp.print("Other: Exit");    
 }
 
 void FstopTimer::st_focus_poll()
@@ -377,8 +370,22 @@ void FstopTimer::st_focus_poll()
 
     // return to prev state?
     if(keys.available()){
-        keys.readRaw();
-        done=true;
+        char ch=keys.readAscii();
+        if(isspace(ch))
+            return;
+        switch(ch){
+        case '0': {
+            //Make sure we don't loose the previous state as we toggle brightness
+            focusBright = !focusBright;
+            int prevstateTemp = prevstate;
+            changeState(ST_FOCUS);
+            prevstate = prevstateTemp;
+            break;
+        }
+        default:
+            keys.readRaw();
+            done=true;
+        }
     }
 
     if(done){
@@ -432,8 +439,15 @@ void FstopTimer::st_edit_poll()
         case 'D':
             changeState(ST_EDIT_GRADE);
             break;
-        case '#':
         case '*':
+            current.getStep(expnum).hard = !current.getStep(expnum).hard;
+            current.getStep(expnum).display(disp, dispbuf, false);
+            break;
+        case '0':
+            current.getStep(expnum).soft = !current.getStep(expnum).soft;
+            current.getStep(expnum).display(disp, dispbuf, false);
+            break;
+        case '#':
             exec.setProgram(&current);
             changeState(ST_EXEC);
             break;
@@ -490,8 +504,19 @@ void FstopTimer::st_edit_grade_poll()
         if(expctx.exitcode != Keypad::KP_C){
             // current.getStep(expnum).grade=constrain(gradectx.result, MINGRADE, MAXGRADE);
             // Round to units of 5. Always rounds down, but that's ok.
+            unsigned char previousGrade = current.getStep(expnum).grade;
             unsigned char temp = (gradectx.result / 5)*5;
             current.getStep(expnum).grade=constrain(temp, currentPaper.minGrade, currentPaper.maxGrade);
+            //Reset the other steps if we chage the first step's grade and the others are equal to it.
+            //This is the normal way I think we want to work. But it still leaves open the option of changing
+            //the grade for an individual step.
+            if (expnum == 0) {
+                for(int i=1; i < Program::MAXSTEPS; i++){
+                    if (current.getStep(i).grade == previousGrade) {
+                        current.getStep(i).grade=current.getStep(0).grade;
+                    }
+                }
+            }
         }
         current.getStep(expnum).display(disp, dispbuf, false);
         // sly state change without expnum=0

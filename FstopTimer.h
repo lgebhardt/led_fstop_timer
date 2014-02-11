@@ -139,14 +139,14 @@ private:
   bool drydown_apply;
   /// drydown factor
   char drydown; 
-  /// use split grade exposures
-  bool splitgrade;
   /// exposure that is being edited
   int expnum;
   /// exposure change using rotary encoder
   int rotexp;
   /// where we're up to in a program-exec when focusing
   char focusphase;
+  /// Focus brightness
+  bool focusBright;
 
   /// hardware pin numbers
   char pin_exposebtn, pin_footswitch, pin_beep, pin_backlight, pin_sd;
@@ -176,9 +176,6 @@ private:
 
   /// invert and save the drydown-application bit
   void toggleDrydown();
-
-  /// invert and save the splitgrade bit
-  void toggleSplitgrade();
 
   /// exec the current program
   void execCurrent();

@@ -167,8 +167,8 @@ void Paper::initDefault() {
     }
     
     name = "System Default Paper";
-    maxBrightnessSoft = 217;
-    maxBrightnessHard = 217;
+    maxBrightnessSoft = 7;
+    maxBrightnessHard = 30;
     minGrade = 55;
     maxGrade = 180;
 }

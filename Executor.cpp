@@ -42,12 +42,6 @@ void Executor::setDrydown(bool d)
     changePhase(0);
 }
 
-void Executor::setSplitgrade(bool s)
-{
-    sg=s;
-    changePhase(0);
-}
-
 /// specify that program is up to a particular exposure; display it
 void Executor::changePhase(unsigned char ph)
 {

@@ -25,20 +25,24 @@ void Program::clear()
     steps[0].grade=100;
     strcpy(steps[0].text, "Base Exposure");
     isstrip=false;
+    steps[0].hard=true;
+    steps[0].soft=true;
    
-    // invalid
-    for(int i=1;i<MAXSTEPS;++i){
+    for(int i=1; i<MAXSTEPS; ++i){
         steps[i].stops=0;
         steps[i].grade=100;
-        strcpy(steps[i].text, "Undefined");
+        steps[i].hard=true;
+        steps[i].soft=true;
+        String name = "Step ";
+        name+= i + 1;
+        name.toCharArray(steps[i].text, TEXTLEN+1);
     }
 
-	clearExposures();
+    clearExposures();
 }
 
 void Program::clearExposures()
 {
-    // invalid
     for(int i=0;i<MAXEXPOSURES;++i){
         exposures[i].ms=0;
     }
@@ -69,10 +73,10 @@ void Program::clipExposures()
     }
 }
 
-bool Program::compile(char dryval, bool splitgrade, Paper& p)
+bool Program::compile(char dryval, Paper& p)
 {
-	clearExposures();
-	
+    clearExposures();
+    
     if(isstrip){
         if(cover)
             compileStripCover(dryval, p);
@@ -83,7 +87,7 @@ bool Program::compile(char dryval, bool splitgrade, Paper& p)
         return true;
     }
     else{
-        return compileNormal(dryval, splitgrade, p);
+        return compileNormal(dryval, p);
     }
 }
 
@@ -91,9 +95,9 @@ void Program::compileStripIndiv(char dryval, Paper& p)
 {
     for(int i=0;i<MAXSTEPS;++i){
         exposures[i].ms=hunToMillis(steps[i].stops-dryval);
-	    exposures[i].softpower=p.getAmountSoft(steps[i].grade);
-	    exposures[i].hardpower=p.getAmountHard(steps[i].grade);
-    	exposures[i].step = &steps[i];
+        exposures[i].softpower=p.getAmountSoft(steps[i].grade);
+        exposures[i].hardpower=p.getAmountHard(steps[i].grade);
+        exposures[i].step = &steps[i];
     }
 }
 
@@ -104,14 +108,14 @@ void Program::compileStripCover(char dryval, Paper& p)
     for(int i=0;i<MAXSTEPS;++i){
         unsigned long thisexp=hunToMillis(steps[i].stops-dryval);
         exposures[i].ms=thisexp-sofar;
-	    exposures[i].softpower=p.getAmountSoft(steps[i].grade);
-	    exposures[i].hardpower=p.getAmountHard(steps[i].grade);
-    	exposures[i].step = &steps[i];
+        exposures[i].softpower=p.getAmountSoft(steps[i].grade);
+        exposures[i].hardpower=p.getAmountHard(steps[i].grade);
+        exposures[i].step = &steps[i];
         sofar+=exposures[i].ms;
     }
 }
 
-bool Program::compileNormal(char dryval, bool splitgrade, Paper& p)
+bool Program::compileNormal(char dryval, Paper& p)
 {
     // Serial.println("compileNormal");
 
@@ -120,86 +124,40 @@ bool Program::compileNormal(char dryval, bool splitgrade, Paper& p)
 
     // Serial.print("steps[0].text:");
     // Serial.println(steps[0].text);
-      
+    
     exposures[0].ms=hunToMillis(base);
-    exposures[0].softpower=p.getAmountSoft(steps[0].grade);
-    exposures[0].hardpower=p.getAmountHard(steps[0].grade);
-	exposures[0].step = &steps[0];
+    exposures[0].softpower= steps[0].soft ? p.getAmountSoft(steps[0].grade) : LEDDriver::LED_OFF;
+    exposures[0].hardpower= steps[0].hard ? p.getAmountHard(steps[0].grade) : LEDDriver::LED_OFF;
 
-	if (splitgrade){
-		exposures[0].step = &steps[0];
-		exposures[1].step = &steps[0];
-
-	    exposures[0].ms=hunToMillis(base);
-	    exposures[1].ms=hunToMillis(base);
-
-	    exposures[0].softpower=p.getAmountSoft(steps[0].grade);
-	    exposures[0].hardpower=LEDDriver::LED_OFF;
-	    exposures[1].softpower=LEDDriver::LED_OFF;
-	    exposures[1].hardpower=p.getAmountHard(steps[0].grade);
-	}else{
-		exposures[0].step = &steps[0];
-
-	    exposures[0].ms=hunToMillis(base);
-
-	    exposures[0].softpower=p.getAmountSoft(steps[0].grade);
-	    exposures[0].hardpower=p.getAmountHard(steps[0].grade);
-	}
+    exposures[0].step = &steps[0];
     
     // figure out the total exposure desired for each step (base+adjustment)
     unsigned long dodgetime=0;
-    for(int i=1;i<MAXSTEPS;++i){
-		int pos_multiplier = splitgrade ? 2 : 1;
-		int j = i * pos_multiplier;
-		
+    for(int i=1;i<MAXSTEPS;++i) {
+        
         if(steps[i].stops == 0){
-            exposures[j].ms=0;
-		    exposures[j].hardpower=LEDDriver::LED_OFF;
-		    exposures[j].softpower=LEDDriver::LED_OFF;
-			if (splitgrade){
-	            exposures[j+1].ms=0;
-			    exposures[j+1].hardpower=LEDDriver::LED_OFF;
-			    exposures[j+1].softpower=LEDDriver::LED_OFF;
-			}
+            exposures[i].ms=0;
+            exposures[i].hardpower=LEDDriver::LED_OFF;
+            exposures[i].softpower=LEDDriver::LED_OFF;
             continue;
         }
 
-		if (splitgrade){
-			exposures[j].step = &steps[i];
-			exposures[j+1].step = &steps[i];
+        exposures[i].step = &steps[i];
 
-		    exposures[j].ms=hunToMillis(base+steps[i].stops);
-		    exposures[j+1].ms=hunToMillis(base+steps[i].stops);
-
-		    exposures[j].softpower=p.getAmountSoft(steps[i].grade);
-		    exposures[j].hardpower=LEDDriver::LED_OFF;
-		    exposures[j+1].softpower=LEDDriver::LED_OFF;
-		    exposures[j+1].hardpower=p.getAmountHard(steps[i].grade);
-		}else{
-			exposures[j].step = &steps[i];
-
-		    exposures[j].ms=hunToMillis(base+steps[i].stops);
-
-		    exposures[j].softpower=p.getAmountSoft(steps[i].grade);
-		    exposures[j].hardpower=p.getAmountHard(steps[i].grade);
-		}
+        exposures[i].ms=hunToMillis(base+steps[i].stops);
+        exposures[i].softpower= steps[i].soft ? p.getAmountSoft(steps[i].grade) : LEDDriver::LED_OFF;
+        exposures[i].hardpower= steps[i].hard ? p.getAmountHard(steps[i].grade) : LEDDriver::LED_OFF;
 
         // is dodge?
         if(steps[i].stops < 0){
             // keep track of total time spent dodging          
-            dodgetime+=exposures[0].ms-exposures[j].ms;  
+            dodgetime+=exposures[0].ms-exposures[i].ms;  
             // convert to time-difference
-            exposures[j].ms=exposures[0].ms-exposures[j].ms;
-			if (splitgrade){
-	            exposures[j+1].ms=exposures[0].ms-exposures[j+1].ms;
-			}
+            exposures[i].ms=exposures[0].ms-exposures[i].ms;
         }
         else{
             // convert to time-difference
-            exposures[j].ms-=exposures[0].ms;          
-			if (splitgrade){
-	            exposures[j+1].ms-=exposures[0].ms;          
-			}
+            exposures[i].ms-=exposures[0].ms;          
         }
     }
     
@@ -209,9 +167,6 @@ bool Program::compileNormal(char dryval, bool splitgrade, Paper& p)
     
     // take off the dodgetime
     exposures[0].ms-=dodgetime;
-	if (splitgrade){
-	    exposures[1].ms-=dodgetime;
-	}
     
     clipExposures();
 
@@ -251,7 +206,6 @@ void Program::Step::displayTime(LiquidCrystal &disp, char *buf, bool lin)
         disp.print("s");
      
         // fill out to 18 chars with spaces
-        // keep the 19th for 'S' splitgrade-indicator
         // keep the 20th for 'D' drydown-indicator
         for(int i=0;i<18-used;++i)
             buf[i]=' ';
@@ -264,13 +218,22 @@ void Program::Step::displayGrade(LiquidCrystal &disp, char *buf, bool lin)
 {
     disp.setCursor(0,1);
 
-    disp.print("Grade: ");
-
-    // print grade
-    char used=0;
-    itoa(grade, buf, 10);
-    used+=strlen(buf);
-    disp.print(buf);
+    String s = "Grade:";
+    disp.print(s);
+    s=" ";
+    s+= (int)grade;
+    s+= " ";
+    s+= hard ? "H/" : "_/";
+    s+= soft ? "S" : "_";
+    
+    char pos;
+    if (s.length() == 7) 
+        pos = 7;
+    else 
+        pos = 6;
+    
+    disp.setCursor(pos,1);
+    disp.print(s);
 }
 
 void Program::Exposure::display(LiquidCrystal &disp, char *buf, bool lin)
@@ -306,7 +269,6 @@ void Program::Exposure::displayTime(LiquidCrystal &disp, char *buf, bool lin)
         disp.print("s");
      
         // fill out to 18 chars with spaces
-        // keep the 19th for 'S' splitgrade-indicator
         // keep the 20th for 'D' drydown-indicator
         for(int i=0;i<18-used;++i)
             buf[i]=' ';
@@ -364,6 +326,8 @@ void Program::save(int slot)
         EEPROM.write(addr++, (steps[i].stops >> 8) & 0xFF);
         EEPROM.write(addr++, steps[i].stops & 0xFF);
         EEPROM.write(addr++, steps[i].grade & 0xFF);
+        EEPROM.write(addr++, steps[i].hard & 0xFF);
+        EEPROM.write(addr++, steps[i].soft & 0xFF);
         for(int t=0;t<TEXTLEN;++t){
             EEPROM.write(addr++, steps[i].text[t]); 
         }
@@ -382,6 +346,8 @@ bool Program::load(int slot)
         tmp|=EEPROM.read(addr++);
         steps[i].stops=tmp;
         steps[i].grade=EEPROM.read(addr++);
+        steps[i].hard=EEPROM.read(addr++);
+        steps[i].soft=EEPROM.read(addr++);
         for(int t=0;t<TEXTLEN;++t){
             steps[i].text[t]=EEPROM.read(addr++); 
         }

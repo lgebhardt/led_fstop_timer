@@ -38,7 +38,7 @@ class Program {
 public:
 
   static const int MAXSTEPS=8;
-  static const int MAXEXPOSURES=MAXSTEPS * 2;
+  static const int MAXEXPOSURES=MAXSTEPS;
   static const int FIRSTSLOT=1;
   static const int LASTSLOT=7;
 
@@ -55,21 +55,23 @@ public:
 
       int stops;               // fixed-point, 1/100ths of a stop
       unsigned char grade;     // grade, ISO Exposure Scale
+      bool hard;               // perform the hard exposure
+      bool soft;               // perform the soft exposure
       char text[TEXTLEN+1];    // description (only TEXTLEN(18) bytes written to EEPROM)
   };
 
   class Exposure {
     public:
       /// render the exposure settings to the screen (time and text)
-	  /// @param lin also display linear time (millis)
-	  void display(LiquidCrystal &disp, char *buf, bool lin);
-	  /// rended only the time line (bottom row);
-	  void displayTime(LiquidCrystal &disp, char *buf, bool lin);
-	  void displayGrade(LiquidCrystal &disp, char *buf, bool lin);
-	  unsigned long ms;        // milliseconds to expose (post-compilation, not saved)
-	  unsigned char hardpower; //power for hard step, 0 is full, 255 is off
-	  unsigned char softpower; //power for soft step, 0 is full, 255 is off
-	  Step* step; 
+      /// @param lin also display linear time (millis)
+      void display(LiquidCrystal &disp, char *buf, bool lin);
+      /// rended only the time line (bottom row);
+      void displayTime(LiquidCrystal &disp, char *buf, bool lin);
+      void displayGrade(LiquidCrystal &disp, char *buf, bool lin);
+      unsigned long ms;        // milliseconds to expose (post-compilation, not saved)
+      unsigned char hardpower; //power for hard step, 0 is full, 255 is off
+      unsigned char softpower; //power for soft step, 0 is full, 255 is off
+      Step* step; 
   };
 
   /// clear all entries, leaving base exposure of 0 stops
@@ -84,7 +86,7 @@ public:
   // unsigned char getCount();
 
   /// convert a program from stops to linear time so that it can be execed
-  bool compile(char dd, bool sg, Paper& p);
+  bool compile(char dd, Paper& p);
 
   /// save to EEPROM
   /// @param slot slot-number in 1..7
@@ -103,7 +105,7 @@ private:
   int slotAddr(int slot);
   void compileStripIndiv(char dd, Paper& p);
   void compileStripCover(char dd, Paper& p);
-  bool compileNormal(char dd, bool sg, Paper& p);
+  bool compileNormal(char dd, Paper& p);
   void clipExposures();
 
   /// convert hundredths-of-stops to milliseconds
