@@ -116,15 +116,7 @@ FstopTimer fst(disp, keys, rotary, expbtn, footswitch, leddriver, tsl, BEEP, BAC
  */
 void setup()
 {
-   // init raw IO for LCD
-   // pinMode(LCDRS, OUTPUT);
-   // pinMode(LCDEN, OUTPUT);
-   // pinMode(LCDD4, OUTPUT);
-   // pinMode(LCDD5, OUTPUT);
-   // pinMode(LCDD6, OUTPUT);
-   // pinMode(LCDD7, OUTPUT);
-   
-   Serial.begin(9600);
+  Serial.begin(9600);
 
    disp.begin(20, 4);
    leddriver.begin();

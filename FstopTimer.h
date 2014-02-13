@@ -74,7 +74,7 @@ public:
     ST_CONFIG_ROTARY,
     ST_CALIBRATE_LIGHT,
     ST_PAPER,
-	ST_PAPER_DISPLAY,
+    ST_PAPER_DISPLAY,
     ST_PAPER_LOAD,
     ST_COUNT
   };
@@ -130,6 +130,8 @@ private:
   int stripbase, stripstep;
   bool stripcover;
   unsigned char stripgrade;
+  
+  bool striphard, stripsoft;
 
   Executor exec;
 

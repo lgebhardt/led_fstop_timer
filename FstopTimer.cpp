@@ -129,6 +129,10 @@ void FstopTimer::begin()
     stripstep=(EEPROM.read(EE_STRIPSTEP)<<8) | EEPROM.read(EE_STRIPSTEP+1);
     stripcover=EEPROM.read(EE_STRIPCOV);
 
+    stripgrade=EEPROM.read(EE_STRIPGRADE);
+    
+    striphard = stripsoft = true;
+    
     // prevent client-overwrite shenanigans
     EEPROM.write(EE_VERSION, VERSIONCODE);
 
@@ -264,7 +268,7 @@ void FstopTimer::execCurrent()
 
 void FstopTimer::execTest()
 {
-    strip.configureStrip(stripbase, stripstep, stripcover, stripgrade, currentPaper);
+    strip.configureStrip(stripbase, stripstep, stripcover, stripgrade, striphard, stripsoft, currentPaper);
     exec.setProgram(&strip);
     changeState(ST_EXEC);
 }
@@ -396,19 +400,12 @@ void FstopTimer::st_focus_poll()
 
 void FstopTimer::st_edit_enter()
 {
-    // don't print help
-/*
-    disp.clear();
-    disp.setCursor(0,0);
-    disp.print("Edit Program");
-    disp.setCursor(0,1);
-    disp.print("A:TX B:EV n:SLOT");
-    delay(1000);
-*/
-
     rotary.getDelta();       // clear any accum'd motion
     expnum=0;
     current.getStep(expnum).display(disp, dispbuf, false);
+
+    disp.setCursor(0,3);
+    disp.print("A:TX B:EV 9:Gd n:SLT");
 }
 
 void FstopTimer::st_edit_poll()
@@ -436,16 +433,20 @@ void FstopTimer::st_edit_poll()
         case 'C':
             changeState(ST_MAIN);
             break;
-        case 'D':
+        case '9':
             changeState(ST_EDIT_GRADE);
             break;
         case '*':
             current.getStep(expnum).hard = !current.getStep(expnum).hard;
             current.getStep(expnum).display(disp, dispbuf, false);
+            disp.setCursor(0,3);
+            disp.print("A:TX B:EV 9:Gd n:SLT");
             break;
         case '0':
             current.getStep(expnum).soft = !current.getStep(expnum).soft;
             current.getStep(expnum).display(disp, dispbuf, false);
+            disp.setCursor(0,3);
+            disp.print("A:TX B:EV 9:Gd n:SLT");
             break;
         case '#':
             exec.setProgram(&current);
@@ -462,6 +463,8 @@ void FstopTimer::st_edit_poll()
             // change to different step for editing
             expnum=ch-'1';
             current.getStep(expnum).display(disp, dispbuf, false);
+            disp.setCursor(0,3);
+            disp.print("A:TX B:EV 9:Gd n:SLT");
             break;
         default:
             errorBeep();
@@ -473,6 +476,8 @@ void FstopTimer::st_edit_poll()
     if(rot != 0){
         clampExposure(current.getStep(expnum).stops, rot*rotexp);
         current.getStep(expnum).display(disp, dispbuf, false);
+        disp.setCursor(0,3);
+        disp.print("A:TX B:EV 9:Gd n:SLT");
     }
 }
 
@@ -488,6 +493,8 @@ void FstopTimer::st_edit_ev_poll()
             current.getStep(expnum).stops=expctx.result;
         }
         current.getStep(expnum).display(disp, dispbuf, false);
+        disp.setCursor(0,3);
+        disp.print("A:TX B:EV 9:Gd n:SLT");
         // sly state change without expnum=0
         curstate=ST_EDIT;
     }
@@ -519,6 +526,8 @@ void FstopTimer::st_edit_grade_poll()
             }
         }
         current.getStep(expnum).display(disp, dispbuf, false);
+        disp.setCursor(0,3);
+        disp.print("A:TX B:EV 9:Gd n:SLT");
         // sly state change without expnum=0
         curstate=ST_EDIT;
     }
@@ -536,6 +545,8 @@ void FstopTimer::st_edit_text_poll()
             strcpy(current.getStep(expnum).text, smsctx.buffer);
         }
         current.getStep(expnum).display(disp, dispbuf, false);
+        disp.setCursor(0,3);
+        disp.print("A:TX B:EV 9:Gd n:SLT");
         curstate=ST_EDIT;        
     }
 }
@@ -727,16 +738,26 @@ void FstopTimer::st_test_enter()
     disp.print(stripcover ? "Cover" : "Indiv");
     disp.print(" B:Change");
     disp.setCursor(0, 1);
-    disp.print("*: Change Grade");
+    disp.print("9:Grade *:H 0:S");
 
     disp.setCursor(0, 2);
-    disp.print("Grade:");
-    // print grade
-    char used=0;
-    char buf[21];
-    itoa(stripgrade, buf, 10);
-    used+=strlen(buf);
-    disp.print(buf);
+    String s = "Grade:";
+    disp.print(s);
+    s=" ";
+    s+= (int)stripgrade;
+    s+= " ";
+    s+= striphard ? "H/" : "_/";
+    s+= stripsoft ? "S" : "_";
+    
+    char pos;
+    if (s.length() == 7) 
+        pos = 7;
+    else 
+        pos = 6;
+    
+    disp.setCursor(pos,2);
+    disp.print(s);
+    
  
     disp.setCursor(0, 3);
     dtostrf(0.01f*stripbase, 0, 2, dispbuf);
@@ -779,9 +800,17 @@ void FstopTimer::st_test_poll()
             toggleDrydown();
             changeState(ST_TEST);
             break;
-        case '*':
-            // change exposures
+        case '9':
+            // change grade
             changeState(ST_TEST_CHANGEGRADE);
+            break;
+        case '*':
+            striphard = !striphard;
+            changeState(ST_TEST);
+            break;
+        case '0':
+            stripsoft = !stripsoft;
+            changeState(ST_TEST);
             break;
         case '#':
             // perform exposure
@@ -797,7 +826,7 @@ void FstopTimer::st_test_poll()
     }
 
     if(go){
-        strip.configureStrip(stripbase, stripstep, stripcover, stripgrade, currentPaper);
+        strip.configureStrip(stripbase, stripstep, stripcover, stripgrade, striphard, stripsoft, currentPaper);
         exec.setProgram(&strip);
         changeState(ST_EXEC);
     }
@@ -833,7 +862,7 @@ void FstopTimer::st_test_changegrade_poll()
 {
     if(deckey.poll()){
         if(gradectx.exitcode != Keypad::KP_C){
-             unsigned char temp = (gradectx.result / 5)*5;
+            unsigned char temp = (gradectx.result / 5) * 5;
             stripgrade=constrain(temp, MINGRADE, MAXGRADE);
             EEPROM.write(EE_STRIPGRADE, stripgrade);
         }

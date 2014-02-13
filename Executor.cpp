@@ -51,8 +51,6 @@ void Executor::changePhase(unsigned char ph)
 	execphase = ph;
 
     (*current).getExposure(execphase).display(disp, dispbuf, true);
-    disp.setCursor(18, 2);
-    disp.print(sg ? "S" : " ");
     disp.setCursor(19, 2);
     disp.print(dd ? "D" : " ");
 }
@@ -113,7 +111,7 @@ void Executor::expose()
 
                     if (buttonPressed){
                         start+=micros()-pausestart;
-					    leddriver.exposeOn(expo.hardpower, expo.softpower, expo.hardpower, expo.softpower);
+                        leddriver.exposeOn(expo.hardpower, expo.softpower, expo.hardpower, expo.softpower);
                     } else {
                         char ch = keys.readRaw();                    
                         switch(ch){
@@ -121,7 +119,7 @@ void Executor::expose()
                             // adjust clock and resume exposing
                             // !! should account for enlarger warmup here
                             start+=micros()-pausestart;
-					        leddriver.exposeOn(expo.hardpower, expo.softpower, expo.hardpower, expo.softpower);
+                            leddriver.exposeOn(expo.hardpower, expo.softpower, expo.hardpower, expo.softpower);
                             break;
                             case Keypad::KP_B:
                             // halt and this exposure

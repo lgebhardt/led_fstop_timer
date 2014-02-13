@@ -69,7 +69,6 @@ private:
   char dispbuf[21];
 
   bool dd;
-  bool sg;
 
   /// program phase about to be executed
   unsigned char execphase;

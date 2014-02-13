@@ -98,7 +98,7 @@ public:
 
   /// configure the program as a test strip;
   /// is assumed to compile after this.
-  void configureStrip(int base, int step, bool cover, unsigned char grade, Paper& p);
+  void configureStrip(int base, int step, bool cover, unsigned char grade, bool hard, bool soft, Paper& p);
 
 private:
 

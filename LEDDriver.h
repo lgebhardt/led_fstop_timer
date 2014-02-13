@@ -14,14 +14,16 @@ public:
  * The Soft LEDs are XPE Green and can run to 1000mA max
  * The A009-D-V-1000 BuckBlock will provide up to 1000mA
  * For maximum life of the LEDs we should run them around 70% of the max, so we will need to scale the soft LEDs back.
- * Testing indicates that 7 results in .72Amps, which is close enough
- * Both LEDs get a bit unstable at low currents. So a minimum brightness needs to be established. 200 is a good starting point
+ * Testing indicates that 7 results in .72Amps, which is close enough. In addition the precision of each value goes down as we get closer to 0.
+ * For this reason we will set the maximum to 8 for each channel.
+ * Both LEDs get a bit unstable at low currents. So a minimum brightness needs to be established. 219 is the last value where the green 
+ * are illuminated. So 220 is effectively off. 225 is the last value where the blue is illuminated. So 226 is effectively off.
  * Both LEDs are non linear in output vs current over these ranges, so look into this if we add a dimming function.
  */
-    static const unsigned char LED_HARD_MAX=0;
-    static const unsigned char LED_HARD_MIN=200;
-    static const unsigned char LED_SOFT_MAX=7;
-    static const unsigned char LED_SOFT_MIN=200;
+    static const unsigned char LED_HARD_MAX=8;
+    static const unsigned char LED_HARD_MIN=226;
+    static const unsigned char LED_SOFT_MAX=8;
+    static const unsigned char LED_SOFT_MIN=220;
     static const unsigned char LED_OFF=255;
 
     void focusOn(unsigned char center_hard, unsigned char center_soft, unsigned char corner_hard, unsigned char corner_soft);

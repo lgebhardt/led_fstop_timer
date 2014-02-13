@@ -48,7 +48,7 @@ void Program::clearExposures()
     }
 }
 
-void Program::configureStrip(int base, int step, bool cov, unsigned char grade, Paper& p)
+void Program::configureStrip(int base, int step, bool cov, unsigned char grade, bool hard, bool soft, Paper& p)
 {
     isstrip=true;
     cover=cov;
@@ -57,6 +57,9 @@ void Program::configureStrip(int base, int step, bool cov, unsigned char grade, 
     for(char i=0;i<MAXSTEPS;++i) {
         steps[i].stops=expos;
         steps[i].grade=grade;
+        steps[i].hard=hard;
+        steps[i].soft=soft;
+        
         strcpy(steps[i].text, "Strip ");
         dtostrf(0.01f*expos, 1, 2, &steps[i].text[6]);
         strcpy(&steps[i].text[10], cov ? " Cov" : " Ind");
@@ -95,8 +98,8 @@ void Program::compileStripIndiv(char dryval, Paper& p)
 {
     for(int i=0;i<MAXSTEPS;++i){
         exposures[i].ms=hunToMillis(steps[i].stops-dryval);
-        exposures[i].softpower=p.getAmountSoft(steps[i].grade);
-        exposures[i].hardpower=p.getAmountHard(steps[i].grade);
+        exposures[i].softpower=steps[i].soft ? p.getAmountSoft(steps[i].grade) : LEDDriver::LED_OFF;
+        exposures[i].hardpower=steps[i].hard ? p.getAmountHard(steps[i].grade) : LEDDriver::LED_OFF;
         exposures[i].step = &steps[i];
     }
 }
@@ -108,8 +111,8 @@ void Program::compileStripCover(char dryval, Paper& p)
     for(int i=0;i<MAXSTEPS;++i){
         unsigned long thisexp=hunToMillis(steps[i].stops-dryval);
         exposures[i].ms=thisexp-sofar;
-        exposures[i].softpower=p.getAmountSoft(steps[i].grade);
-        exposures[i].hardpower=p.getAmountHard(steps[i].grade);
+        exposures[i].softpower=steps[i].soft ? p.getAmountSoft(steps[i].grade) : LEDDriver::LED_OFF;
+        exposures[i].hardpower=steps[i].hard ? p.getAmountHard(steps[i].grade) : LEDDriver::LED_OFF;
         exposures[i].step = &steps[i];
         sofar+=exposures[i].ms;
     }
@@ -288,12 +291,20 @@ void Program::Exposure::displayGrade(LiquidCrystal &disp, char *buf, bool lin)
     itoa(step->grade, buf, 10);
     used+=strlen(buf);
     disp.print(buf);
+    disp.print(" ");
 
-    //ToDo: Calculate these percentages based on the paper and the grade
-    disp.print(" ");    
-    disp.print(softpower);    
-    disp.print(":");    
-    disp.print(hardpower);    
+    int softPercent = floor((((float)LEDDriver::LED_SOFT_MIN - softpower) / (float)LEDDriver::LED_SOFT_MIN) * 100.0);
+    if (softPercent < 0)
+      softPercent = 0;
+    
+    int hardPercent = floor((((float)LEDDriver::LED_HARD_MIN - hardpower) / (float)LEDDriver::LED_HARD_MIN) * 100.0);
+    if (hardPercent < 0)
+      hardPercent = 0;
+
+    disp.print(hardPercent);    
+    disp.print(":");
+    disp.print(softPercent);
+    disp.print("%");
 }
 
 Program::Step &Program::getStep(int which)
