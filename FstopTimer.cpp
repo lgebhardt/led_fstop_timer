@@ -131,7 +131,7 @@ void FstopTimer::begin()
 
     stripgrade=EEPROM.read(EE_STRIPGRADE);
     
-    striphard = stripsoft = true;
+    stripinithard = stripinitsoft = stripstephard= stripstepsoft = true;
     
     // prevent client-overwrite shenanigans
     EEPROM.write(EE_VERSION, VERSIONCODE);
@@ -268,7 +268,7 @@ void FstopTimer::execCurrent()
 
 void FstopTimer::execTest()
 {
-    strip.configureStrip(stripbase, stripstep, stripcover, stripgrade, striphard, stripsoft, currentPaper);
+    strip.configureStrip(stripbase, stripstep, stripcover, stripgrade, stripinithard, stripstephard, stripinitsoft, stripstepsoft, currentPaper);
     exec.setProgram(&strip);
     changeState(ST_EXEC);
 }
@@ -738,7 +738,7 @@ void FstopTimer::st_test_enter()
     disp.print(stripcover ? "Cover" : "Indiv");
     disp.print(" B:Change");
     disp.setCursor(0, 1);
-    disp.print("9:Grade *:H 0:S");
+    disp.print("9:Grade *7:H 08:S");
 
     disp.setCursor(0, 2);
     String s = "Grade:";
@@ -746,8 +746,11 @@ void FstopTimer::st_test_enter()
     s=" ";
     s+= (int)stripgrade;
     s+= " ";
-    s+= striphard ? "H/" : "_/";
-    s+= stripsoft ? "S" : "_";
+    s+= stripinithard ? "H" : "_";
+    s+= stripstephard ? "H" : "_";
+    s+= "/";
+    s+= stripinitsoft ? "S" : "_";
+    s+= stripstepsoft ? "S" : "_";
     
     char pos;
     if (s.length() == 7) 
@@ -804,12 +807,20 @@ void FstopTimer::st_test_poll()
             // change grade
             changeState(ST_TEST_CHANGEGRADE);
             break;
+        case '7':
+            stripstephard = !stripstephard;
+            changeState(ST_TEST);
+            break;
         case '*':
-            striphard = !striphard;
+            stripinithard = !stripinithard;
             changeState(ST_TEST);
             break;
         case '0':
-            stripsoft = !stripsoft;
+            stripinitsoft = !stripinitsoft;
+            changeState(ST_TEST);
+            break;
+        case '8':
+            stripstepsoft = !stripstepsoft;
             changeState(ST_TEST);
             break;
         case '#':
@@ -826,7 +837,7 @@ void FstopTimer::st_test_poll()
     }
 
     if(go){
-        strip.configureStrip(stripbase, stripstep, stripcover, stripgrade, striphard, stripsoft, currentPaper);
+        strip.configureStrip(stripbase, stripstep, stripcover, stripgrade, stripinithard, stripstephard, stripinitsoft, stripstepsoft, currentPaper);
         exec.setProgram(&strip);
         changeState(ST_EXEC);
     }

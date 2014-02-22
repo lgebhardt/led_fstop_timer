@@ -48,7 +48,7 @@ void Program::clearExposures()
     }
 }
 
-void Program::configureStrip(int base, int step, bool cov, unsigned char grade, bool hard, bool soft, Paper& p)
+void Program::configureStrip(int base, int step, bool cov, unsigned char grade, bool inithard, bool stephard, bool initsoft, bool stepsoft, Paper& p)
 {
     isstrip=true;
     cover=cov;
@@ -57,8 +57,8 @@ void Program::configureStrip(int base, int step, bool cov, unsigned char grade, 
     for(char i=0;i<MAXSTEPS;++i) {
         steps[i].stops=expos;
         steps[i].grade=grade;
-        steps[i].hard=hard;
-        steps[i].soft=soft;
+        steps[i].hard= (i == 0) ? inithard : stephard;
+        steps[i].soft= (i == 0) ? initsoft : stepsoft;
         
         strcpy(steps[i].text, "Strip ");
         dtostrf(0.01f*expos, 1, 2, &steps[i].text[6]);

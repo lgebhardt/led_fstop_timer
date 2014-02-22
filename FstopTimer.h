@@ -131,7 +131,8 @@ private:
   bool stripcover;
   unsigned char stripgrade;
   
-  bool striphard, stripsoft;
+  bool stripinithard, stripinitsoft;
+  bool stripstephard, stripstepsoft;
 
   Executor exec;
 
